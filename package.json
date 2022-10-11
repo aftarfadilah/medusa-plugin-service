@@ -1,21 +1,17 @@
 {
-  "name": "medusa-starter-default",
+  "name": "medusa-service",
   "version": "0.0.1",
-  "description": "A starter for Medusa projects.",
-  "author": "Sebastian Rindom <skrindom@gmail.com>",
+  "description": "An plugin for selling services with medusa.",
+  "author": "Ai-Ecom <admin@ai-ecom.io>",
   "license": "MIT",
   "scripts": {
     "seed": "medusa seed -f ./data/seed.json",
     "build": "babel src -d dist --extensions \".ts,.js\"",
     "start": "medusa develop"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@medusajs/medusa": "^1.3.7",
-    "@medusajs/medusa-cli": "^1.3.1",
-    "medusa-fulfillment-manual": "^1.1.31",
     "medusa-interfaces": "^1.3.3",
-    "medusa-payment-manual": "^1.0.16",
-    "medusa-payment-stripe": "^1.1.43",
     "typeorm": "^0.2.36"
   },
   "repository": "https://github.com/medusajs/medusa-starter-default.git",

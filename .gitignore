@@ -6,10 +6,10 @@
 yarn-error.log
 /.idea
 
-api/
-services/
-models/
-subscribers/
-migrations/
-loaders/
+/api/
+/services/
+/models/
+/subscribers/
+/migrations/
+/loaders/
 index.*

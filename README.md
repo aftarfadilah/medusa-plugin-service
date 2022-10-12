@@ -121,6 +121,43 @@ docker exec medusa-server medusa seed -f ./data/seed.json
 
 This will execute the previously described seed script in the running `medusa-server` Docker container.
 
+
+## Troubleshoot Errors
+
+### Error: The class must be a valid service implementation
+
+
+yarn
+```
+cd <SERVER_PATH>/node_modules/medusa-interfaces
+yarn link
+cd <PLUGIN_PATH>
+rm -rf node_modules/medusa-interfaces
+yarn link medusa-interfaces
+yarn link
+cd <SERVER_PATH>
+yarn link your-plugin
+```
+
+npm
+```
+cd <SERVER_PATH>/node_modules/medusa-interfaces
+npm link
+cd <PLUGIN_PATH>
+rm -rf node_modules/medusa-interfaces
+npm link medusa-interfaces
+npm link
+cd <SERVER_PATH>
+npm link your-plugin
+```
+
+Where <SERVER_PATH> is the path to your Medusa server and <PLUGIN_PATH> is the path to your plugin.
+
+This links the medusa-interfaces package from your medusa-backend to your plugin directory and then links your plugin to your medusa-backend.
+
+[Source](https://docs.medusajs.com/advanced/backend/plugins/create/#error-the-class-must-be-a-valid-service-implementation)
+
+
 ## Try it out
 
 ```

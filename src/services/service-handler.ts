@@ -1,15 +1,14 @@
-import {BaseService} from "medusa-interfaces";
+import { BaseService } from "medusa-interfaces";
 
-class ServiceService extends BaseService {
-    constructor({productService}) {
+class ServiceHandlerService extends BaseService {
+
+    constructor({}) {
         super();
-
-        this.productService_ = productService
     }
 
     async createNewService() {
         //TODO Create new product variant which is a service
-
+        console.log('create new service');
         // const [product] = await this.productService_.list({}, { take: 1 })
 
         return `Welcome to!`
@@ -40,4 +39,4 @@ class ServiceService extends BaseService {
     }
 }
 
-export default ServiceService;
+export default ServiceHandlerService;

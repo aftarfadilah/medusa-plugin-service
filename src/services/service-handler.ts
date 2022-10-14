@@ -1,7 +1,6 @@
 import { defaultAdminProductFields, defaultAdminProductRelations, Product, ProductService, ShippingProfileService } from "@medusajs/medusa";
 import { BaseService } from "medusa-interfaces";
 import { Request, Response } from "express";
-import { EntityManager } from "typeorm";
 import { IServiceHandler } from "../interfaces/service-handler";
 
 class ServiceHandlerService extends BaseService implements IServiceHandler {
@@ -37,39 +36,38 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
         })
     
         const product = await this.productService.retrieve(newProduct.id, {
-            select: defaultAdminProductFields,
-            relations: defaultAdminProductRelations,
-        })
+            select: ["created_at", "updated_at", "deleted_at", "title", "subtitle", "description", "handle"],
+        });
         
-        return {
-            id: product.id,
-            created_at: product.created_at,
-            updated_at: product.updated_at,
-            deleted_at: product.deleted_at,
-            title: product.title,
-            subtitle: product.subtitle,
-            description: product.description,
-            handle: product.handle,
-            status: product.status
-        };
+        return product;
     }
 
-    private async getProductList(val: Array<string>) {
-        const productIdList : Array<string> = val;
-        const productList : Array<Product> = [];
+    //TODO auto remove product, if product id not exist
+    private async filteringExistProduct(service_id: string, val: Array<string>, detailProduct: boolean) {
+        const productIdList : string[] = val.filter((item, index) => val.indexOf(item) === index); // remove duplicate id
+        const productDetailList : Product[] = [];
+        const productIdFilteredList : string[] = [];
 
         if (productIdList.length > 0) {
             for (const x of productIdList) {
                 try {
                     const getProduct = await this.productService.retrieve(x);
-                    productList.push(getProduct);
+                    if (detailProduct) {
+                        productDetailList.push(getProduct);
+                    }
+
+                    productIdFilteredList.push(x);
                 } catch (error) {
-                    console.log(error.type);
                 }
             }
         }
 
-        return productList;
+        if (productIdFilteredList.length != productIdList.length) {
+            await this.productService.update(service_id, { metadata: { product: productIdFilteredList } });
+        }
+        
+        if (detailProduct) return productDetailList;
+        return productIdFilteredList;
     }
 
     //TODO Get all products which are services
@@ -79,7 +77,7 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
         for (const product of products) {
             if (product.metadata) {
                 if (product.metadata.isService) {
-                    const productList : Array<Product> = await this.getProductList(product.metadata.product as Array<string>);
+                    const productList : Product[] | string[] = await this.filteringExistProduct(product.id, product.metadata.product as string[], true);
 
                     listService.push({
                         id: product.id,
@@ -105,7 +103,7 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
         for (const product of products) {
             if (product.metadata) {
                 if (product.metadata.isService) {
-                    const productList : Array<Product> = await this.getProductList(product.metadata.product as Array<string>);
+                    const productList : Product[] | string[] = await this.filteringExistProduct(product.id, product.metadata.product as string[], true);
 
                     return {
                         id: product.id,
@@ -151,9 +149,10 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
         }
 
         if (product) {
+            const productList : Product[] | string[] = await this.filteringExistProduct(id, product as string[], false);
             updateDataQuery = {
                 metadata: {
-                    product: product
+                    product: productList
                 },
                 ...updateDataQuery
             }

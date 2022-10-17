@@ -1,12 +1,6 @@
-import { defaultAdminProductFields, defaultAdminProductRelations, Product, ProductService, ShippingProfileService } from "@medusajs/medusa";
 import { BaseService } from "medusa-interfaces";
-import { Request, Response } from "express";
-import { IServiceHandler } from "../interfaces/service-handler";
 
-class ServiceHandlerService extends BaseService implements IServiceHandler {
-    private productService: ProductService;
-    private shippingProfileService: ShippingProfileService;
-
+class ServiceHandlerService extends BaseService {
     constructor({ productService, shippingProfileService }) {
         super();
         this.productService = productService;
@@ -14,7 +8,7 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
     }
 
     //TODO Create new product variant which is a service
-    async create(req: Request, res: Response) {
+    async create(req, res) {
         const { title, handle } = req.body;
         const metadata = {
             isService: true,
@@ -43,10 +37,10 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
     }
 
     //TODO auto remove product, if product id not exist
-    private async filteringExistProduct(service_id: string, val: Array<string>, detailProduct: boolean) {
-        const productIdList : string[] = val.filter((item, index) => val.indexOf(item) === index); // remove duplicate id
-        const productDetailList : Product[] = [];
-        const productIdFilteredList : string[] = [];
+    async filteringExistProduct(service_id, val, detailProduct) {
+        const productIdList = val.filter((item, index) => val.indexOf(item) === index); // remove duplicate id
+        const productDetailList = [];
+        const productIdFilteredList = [];
 
         if (productIdList.length > 0) {
             for (const x of productIdList) {
@@ -71,13 +65,13 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
     }
 
     //TODO Get all products which are services
-    async list(req: Request, res: Response) {
+    async list(req, res) {
         const [products] = await this.productService.listAndCount({}, {});
         const listService = [];
         for (const product of products) {
             if (product.metadata) {
                 if (product.metadata.isService) {
-                    const productList : Product[] | string[] = await this.filteringExistProduct(product.id, product.metadata.product as string[], true);
+                    const productList = await this.filteringExistProduct(product.id, product.metadata.product, true);
 
                     listService.push({
                         id: product.id,
@@ -97,13 +91,13 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
         return listService;
     }
 
-    async get(req: Request, res: Response) {
+    async get(req, res) {
         const { id } = req.params;
         const [products] = await this.productService.listAndCount({ id: id }, {});
         for (const product of products) {
             if (product.metadata) {
                 if (product.metadata.isService) {
-                    const productList : Product[] | string[] = await this.filteringExistProduct(product.id, product.metadata.product as string[], true);
+                    const productList = await this.filteringExistProduct(product.id, product.metadata.product, true);
 
                     return {
                         id: product.id,
@@ -126,7 +120,7 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
     }
 
     //TODO Update service based on specific id
-    async update(req: Request, res: Response) {
+    async update(req, res) {
         const { id, product } = req.body;
         
         const fieldList = [
@@ -149,7 +143,7 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
         }
 
         if (product) {
-            const productList : Product[] | string[] = await this.filteringExistProduct(id, product as string[], false);
+            const productList = await this.filteringExistProduct(id, product, false);
             updateDataQuery = {
                 metadata: {
                     product: productList
@@ -175,7 +169,7 @@ class ServiceHandlerService extends BaseService implements IServiceHandler {
     }
 
     //TODO Delete service based on specific id
-    async delete(req: Request, res: Response) {
+    async delete(req, res) {
         const { id } = req.params;
         return await this.productService.delete(id);
     }

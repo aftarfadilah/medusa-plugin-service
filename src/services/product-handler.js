@@ -1,13 +1,6 @@
-import { PricingService, Product, ProductService, ShippingProfileService } from "@medusajs/medusa";
 import { BaseService } from "medusa-interfaces";
-import { Request, Response } from "express";
-import { IProductHandler } from "../interfaces/product-handler";
-import { PricedProduct } from "@medusajs/medusa/dist/types/pricing";
 
-class ProductHandlerService extends BaseService implements IProductHandler {
-    private productService: ProductService;
-    private shippingProfileService: ShippingProfileService;
-
+class ProductHandlerService extends BaseService {
     constructor({ productService, shippingProfileService }) {
         super();
         this.productService = productService;
@@ -15,8 +8,8 @@ class ProductHandlerService extends BaseService implements IProductHandler {
     }
     
 
-    async list(req: Request, res: Response) {
-        const pricingService: PricingService = req.scope.resolve("pricingService")
+    async list(req, res) {
+        const pricingService = req.scope.resolve("pricingService")
 
         const { fields, expand, is_giftcard, offset, limit, q } = req.query;
         const relations = expand.split(",");
@@ -37,8 +30,8 @@ class ProductHandlerService extends BaseService implements IProductHandler {
             }
         )
 
-        let products: (Product | PricedProduct)[] = rawProducts;
-        const productFiltered: (Product | PricedProduct)[] = [];
+        let products = rawProducts;
+        const productFiltered = [];
 
         const includesPricing = ["variants", "variants.prices"].every((relation) =>
             relations?.includes(relation)

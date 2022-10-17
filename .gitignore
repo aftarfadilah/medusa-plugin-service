@@ -13,4 +13,4 @@ yarn-error.log
 /subscribers/
 /migrations/
 /loaders/
-index.js
+/index.js

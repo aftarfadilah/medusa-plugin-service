@@ -3,7 +3,6 @@ import { BaseService } from "medusa-interfaces";
 import { Request, Response } from "express";
 import { IProductHandler } from "../interfaces/product-handler";
 import { PricedProduct } from "@medusajs/medusa/dist/types/pricing";
-import { omit } from "lodash";
 
 class ProductHandlerService extends BaseService implements IProductHandler {
     private productService: ProductService;
@@ -22,6 +21,8 @@ class ProductHandlerService extends BaseService implements IProductHandler {
         const { fields, expand, is_giftcard, offset, limit, q } = req.query;
         const relations = expand.split(",");
         const select = fields.split(",");
+
+        select.push("metadata"); // add metadata for checking is service or not
 
         const [rawProducts, count] = await this.productService.listAndCount(
             {
@@ -47,7 +48,7 @@ class ProductHandlerService extends BaseService implements IProductHandler {
         }
 
         for (const product of products) {
-            if (product.metadata && product.metadata.isService == undefined) {
+            if (product.metadata && product.metadata.isService != true) {
                 productFiltered.push(product);
             } else if (product.metadata == null) {
                 productFiltered.push(product);

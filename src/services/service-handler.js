@@ -1,13 +1,12 @@
 import { BaseService } from "medusa-interfaces";
-import { getConfigFile } from "medusa-core-utils";
-
+import { ILike } from "typeorm"
 class ServiceHandlerService extends BaseService {
-    constructor({ productService, productRepository, shippingProfileService }, options) {
+    constructor({ manager, productService, productRepository, shippingProfileService }, options) {
         super();
-        this.productService = productService;
-        this.shippingProfileService = shippingProfileService;
-        this.productRepository = productRepository;
-        this.typeID = options.serviceId || "";
+        this.manager_ = manager;
+        this.productService_ = productService;
+        this.shippingProfileService_ = shippingProfileService;
+        this.productRepository_ = productRepository;
         this.typeName = options.serviceName || "Service";
         this.defaultSelection = ["created_at", "updated_at", "deleted_at", "title", "type", "type_id", "id", "subtitle", "description", "handle", "metadata"];
         this.defaultRelation = ["type"];
@@ -23,17 +22,17 @@ class ServiceHandlerService extends BaseService {
 
         const entityManager = req.scope.resolve("manager")
         const newProduct = await entityManager.transaction(async (manager) => {
-            let shippingProfile = await this.shippingProfileService
+            let shippingProfile = await this.shippingProfileService_
                 .withTransaction(manager)
                 .retrieveDefault()
         
-            const newProduct = await this.productService
+            const newProduct = await this.productService_
                 .withTransaction(manager)
                 .create({ title: title, handle: handle, metadata: metadata, profile_id: shippingProfile.id, type: { value: this.typeName } })
                 return newProduct
         })
     
-        const product = await this.productService.retrieve(newProduct.id, {
+        const product = await this.productService_.retrieve(newProduct.id, {
             relations: this.defaultRelation
         });
         
@@ -49,7 +48,7 @@ class ServiceHandlerService extends BaseService {
         if (productIdList.length > 0) {
             for (const x of productIdList) {
                 try {
-                    const getProduct = await this.productService.retrieve(x);
+                    const getProduct = await this.productService_.retrieve(x);
                     if (detailProduct) {
                         productDetailList.push(getProduct);
                     }
@@ -60,46 +59,103 @@ class ServiceHandlerService extends BaseService {
             }
         }
 
+        // check if there a different length then update with new products list
         if (productIdFilteredList.length != productIdList.length) {
-            await this.productService.update(service_id, { metadata: { products: productIdFilteredList } });
+            await this.productService_.update(service_id, { metadata: { products: productIdFilteredList } });
         }
         
         if (detailProduct) return productDetailList;
         return productIdFilteredList;
     }
+    
+    filterQuery(config) {
+
+        if (!config?.limit) {
+            config.limit = 15;
+        } else {
+            config.limit = parseInt(config.limit);
+        }
+
+        if (!config?.offset) {
+            config.offset = 0;
+        } else {
+            config.offset = parseInt(config.offset);
+        }
+
+        if (!config?.q) {
+            config.q = "";
+        }
+
+        if (!config?.showProductDetail) {
+            config.showProductDetail = true;
+        } else {
+            if (parseInt(config.showProductDetail) == 0) {
+                config.showProductDetail = false;
+            } else {
+                config.showProductDetail = true
+            }
+        }
+
+        return config;
+    }
 
     //TODO Get all products which are services
     async list(req, res) {
-        // Need more work for better find Type
-        const [products] = await this.productService.listAndCount({ type_id: this.typeID }, { relations: this.defaultRelation, select: this.defaultSelection });
+        const { limit, offset, q, showProductDetail } = this.filterQuery(req.query);
 
-        for (const product of products) {
-            if (product.metadata?.products.length > 0) {
-                const productList = await this.filteringExistProduct(product.id, product.metadata.products, true);
-                product.products = productList;
+        const { services, count } = await this.listAndCount({ limit, offset, q });
+
+        for (const service of services) {
+            if (service.metadata?.products?.length > 0) {
+                const productList = await this.filteringExistProduct(service.id, service.metadata.products, showProductDetail);
+                service.products = productList;
             }
-            product.type = undefined;
-            product.metadata = undefined;
-            product.type_id = undefined;
+
+            service.type = undefined;
+            service.metadata = undefined;
+            service.type_id = undefined;
         }
 
-        return products;
+        return {
+            services: services,
+            count: count,
+            limit: limit,
+            offset: offset
+        };
     }
+
+    async listAndCount(config) {
+        const manager = this.manager_;
+        const productRepo = manager.getCustomRepository(this.productRepository_);
+
+        const services = await productRepo.find({
+            relations: this.defaultRelation,
+            select: this.defaultSelection,
+            where: { type: { value: this.typeName }, title: ILike(`%${config.q}%`) },
+            take: config.limit,
+            skip: config.offset
+        });
+
+        const count = services.length;
+
+        return { services, count };
+      }
 
     async get(req, res) {
         const { id } = req.params;
-        const [products] = await this.productService.listAndCount({ id: id }, { select: this.defaultSelection });
+        const { showProductDetail } = this.filterQuery(req.query);
+        const [services] = await this.productService_.listAndCount({ id: id }, { select: this.defaultSelection });
 
-        for (const product of products) {
-            if (product.metadata?.products.length > 0) {
-                const productList = await this.filteringExistProduct(product.id, product.metadata.products, true);
-                product.products = productList;
+        for (const service of services) {
+            if (service.metadata?.products?.length > 0) {
+                const productList = await this.filteringExistProduct(service.id, service.metadata.products, showProductDetail);
+                service.products = productList;
             }
-            product.type = undefined;
-            product.metadata = undefined;
-            product.type_id = undefined;
+            service.type = undefined;
+            service.metadata = undefined;
+            service.type_id = undefined;
 
-            return product;
+            return service;
         }
 
         return {
@@ -111,7 +167,7 @@ class ServiceHandlerService extends BaseService {
     async update(req, res) {
         const { id, products } = req.body;
         
-        const serviceData = await this.productService.retrieve(id, { relations: this.defaultRelation });
+        const serviceData = await this.productService_.retrieve(id, { relations: this.defaultRelation });
         if (serviceData.type == null || serviceData.type?.value != this.typeName) return { message: "sorry this item is not service :(" }
 
         const fieldList = [
@@ -144,7 +200,7 @@ class ServiceHandlerService extends BaseService {
             }
         }
 
-        const updateProduct = await this.productService.update(id, updateDataQuery);
+        const updateProduct = await this.productService_.update(id, updateDataQuery);
 
         return {
             id: updateProduct.id,
@@ -163,10 +219,10 @@ class ServiceHandlerService extends BaseService {
     //TODO Delete service based on specific id
     async delete(req, res) {
         const { id } = req.params;
-        const serviceData = await this.productService.retrieve(id, { relations: this.defaultRelation });
+        const serviceData = await this.productService_.retrieve(id, { relations: this.defaultRelation });
         if (serviceData.type == null || serviceData.type?.value != this.typeName) return { message: "sorry this item is not service :(" }
         
-        return await this.productService.delete(id);
+        return await this.productService_.delete(id);
     }
 }
 

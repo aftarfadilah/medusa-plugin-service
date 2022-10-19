@@ -11,8 +11,8 @@ class ProductHandlerService extends BaseService {
     }
     
     filterQuery(config) {
-        config.relations = config.expand.split(",");
-        config.select = config.fields.split(",");
+        config.relations = config?.expand?.split(",");
+        config.select = config?.fields?.split(",");
 
         if (!config?.limit) {
             config.limit = 15;

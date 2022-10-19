@@ -19,7 +19,8 @@ export default (app, rootDirectory) => {
     };
 
     route.options("/", cors(corsOptions));
-
+    route.options("/products", cors(corsOptions));
+    
     route.get(
         "/products",
         cors(corsOptions),

@@ -1,59 +1,84 @@
 import { BaseService } from "medusa-interfaces";
+import { ILike, Not } from "typeorm";
 
 class ProductHandlerService extends BaseService {
-    constructor({ productService, shippingProfileService }) {
+    constructor({ manager, productService, pricingService, productRepository }) {
         super();
-        this.productService = productService;
-        this.shippingProfileService = shippingProfileService;
+        this.manager_ = manager;
+        this.productService_ = productService;
+        this.pricingService_ = pricingService;
+        this.productRepository_ = productRepository;
     }
     
+    filterQuery(config) {
+        config.relations = config.expand.split(",");
+        config.select = config.fields.split(",");
+
+        if (!config?.limit) {
+            config.limit = 15;
+        } else {
+            config.limit = parseInt(config.limit);
+        }
+
+        if (!config?.offset) {
+            config.offset = 0;
+        } else {
+            config.offset = parseInt(config.offset);
+        }
+
+        if (!config?.q) {
+            config.q = "";
+        }
+
+        return config;
+    }
 
     async list(req, res) {
-        const pricingService = req.scope.resolve("pricingService")
-
-        const { fields, expand, is_giftcard, offset, limit, q } = req.query;
-        const relations = expand.split(",");
-        const select = fields.split(",");
-
-        select.push("metadata"); // add metadata for checking is service or not
-
-        const [rawProducts, count] = await this.productService.listAndCount(
-            {
-                q: q
-            },
-            {
-                select: select,
-                relations: relations,
-                skip: offset,
-                take: limit,
-                include_discount_prices: is_giftcard || false
-            }
-        )
-
-        let products = rawProducts;
-        const productFiltered = [];
-
-        const includesPricing = ["variants", "variants.prices"].every((relation) =>
-            relations?.includes(relation)
-        )
-        if (includesPricing) {
-            products = await pricingService.setProductPrices(rawProducts)
+        const { select, relations, is_giftcard, offset, limit, q } = this.filterQuery(req.query);
+        const { products, count } = await this.listAndCount({
+            q: q
+        },
+        {
+            select: select,
+            relations: relations,
+            skip: offset,
+            take: limit,
+            include_discount_prices: is_giftcard || false
         }
-
-        for (const product of products) {
-            if (product.metadata && product.metadata.isService != true) {
-                productFiltered.push(product);
-            } else if (product.metadata == null) {
-                productFiltered.push(product);
-            }
-        }
+        );
 
         return {
-            products: productFiltered,
-            count: productFiltered.length,
+            products: products,
+            count: count,
             offset: offset,
             limit: limit,
         }
+    }
+
+    async listAndCount( selector, config ) {
+        const manager = this.manager_;
+        
+        const productRepo = manager.getCustomRepository(this.productRepository_);
+        const rawProducts = await productRepo.find({
+            where: { type_id: null, title: ILike(`%${selector?.q}%`) },
+            relations: config.relations,
+            select: config.select,
+            take: config.take,
+            skip: config.skip
+        });
+
+        let products = rawProducts;
+
+        const includesPricing = ["variants", "variants.prices"].every((relation) =>
+            config.relations?.includes(relation)
+        )
+        if (includesPricing) {
+            products = await this.pricingService_.setProductPrices(rawProducts)
+        }
+
+        const count = products.length;
+    
+        return { products, count };
     }
 }
 

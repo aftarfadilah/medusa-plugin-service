@@ -1,11 +1,10 @@
 import { Router } from "express";
-import routes from "./routes";
+import admin from "./routes/admin";
 
-/* TODO second argument pluginConfig: Record<string, unknown> part of PR https://github.com/medusajs/medusa/pull/959 not yet in master */
 export default (rootDirectory, options) => {
-  const app = Router();
+    const app = Router();
 
-  routes(app, rootDirectory);
+    admin(app, rootDirectory, options);
 
-  return app;
+    return app;
 };

@@ -5,6 +5,7 @@ import { getConfigFile } from "medusa-core-utils";
 
 import services from "./services";
 import products from "./products";
+import locations from "./locations";
 
 const route = Router()
 
@@ -24,6 +25,7 @@ export default (app, rootDirectory, config) => {
     
     services(route);
     products(route);
+    locations(route);
 
     return app;
 }

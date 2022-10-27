@@ -1,5 +1,5 @@
 import { BaseService } from "medusa-interfaces";
-import { ILike, Not } from "typeorm";
+import { ILike } from "typeorm";
 
 class ProductHandlerService extends BaseService {
     constructor({ manager, productService, pricingService, productRepository }) {

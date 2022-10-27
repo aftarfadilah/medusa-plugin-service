@@ -85,6 +85,7 @@ export class initialService1666791604741 implements MigrationInterface {
             CREATE TABLE IF NOT EXISTS location
             (
                 "id" character varying NOT NULL,
+                "title" character varying NOT NULL,
                 "customer_id" character varying,
                 "company" character varying,
                 "first_name" character varying,
@@ -96,6 +97,7 @@ export class initialService1666791604741 implements MigrationInterface {
                 "province" character varying,
                 "postal_code" character varying,
                 "phone" character varying,
+                "code" character varying NOT NULL,
                 "created_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
                 "updated_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
                 "deleted_at" timestamp WITH time zone NULL,

@@ -122,7 +122,7 @@ docker exec medusa-server medusa seed -f ./data/seed.json
 This will execute the previously described seed script in the running `medusa-server` Docker container.
 
 
-## Troubleshoot Errors
+## Troubleshoot Errors While Developing Plugin
 
 ### Error: The class must be a valid service implementation
 
@@ -157,6 +157,17 @@ This links the medusa-interfaces package from your medusa-backend to your plugin
 
 [Source](https://docs.medusajs.com/advanced/backend/plugins/create/#error-the-class-must-be-a-valid-service-implementation)
 
+
+### Error: Entity metadata for Entity_Name#table_name was not found. Check if you specified a correct entity object and if it's connected in the connection options.
+
+yarn
+```
+cd <SERVER_PATH>/node_modules/@medusajs/medusa
+yarn link
+cd <PLUGIN_PATH>
+rm -rf node_modules/@medusajs/medusa
+npm link `@medusajs/medusa`
+```
 
 ## Try it out
 

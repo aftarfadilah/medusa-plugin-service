@@ -13,4 +13,6 @@ yarn-error.log
 /subscribers/
 /migrations/
 /loaders/
+/repositories/
+/utils/
 /index.js

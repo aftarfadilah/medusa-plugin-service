@@ -102,9 +102,12 @@ export class initialService1666791604741 implements MigrationInterface {
                 "metadata" jsonb,
                 CONSTRAINT "PK_location_id" PRIMARY KEY ("id"))
         `);
+
+        await queryRunner.query(`ALTER TABLE "location" ADD CONSTRAINT "FK_location_country_code_country" FOREIGN KEY ("country_code") REFERENCES "country"("iso_2") ON DELETE NO ACTION ON UPDATE NO ACTION`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "location" DROP CONSTRAINT "FK_location_country_code_country"`);
         await queryRunner.query(`
             DROP TABLE appointment;
             DROP TABLE company;

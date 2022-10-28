@@ -15,4 +15,5 @@ yarn-error.log
 /loaders/
 /repositories/
 /utils/
+/types/
 /index.js

@@ -166,8 +166,22 @@ cd <SERVER_PATH>/node_modules/@medusajs/medusa
 yarn link
 cd <PLUGIN_PATH>
 rm -rf node_modules/@medusajs/medusa
-npm link `@medusajs/medusa`
+yarn link "@medusajs/medusa"
 ```
+
+### Error: Cannot read properties of undefined (reading 'find') / (reading 'findOne')
+
+yarn
+```
+cd <SERVER_PATH>/node_modules/typeorm
+yarn link
+cd <PLUGIN_PATH>
+rm -rf node_modules/typeorm
+yarn link "typeorm"
+```
+
+What happend with typorm? it's because typeorm remove `getCustomRepository` function so find, findOne etc will not work and then solved by using typeorm on medusa-backend where the typeorm still support `getCustomRepository`.
+
 
 ## Try it out
 

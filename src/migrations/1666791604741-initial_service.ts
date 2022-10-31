@@ -44,17 +44,6 @@ export class initialService1666791604741 implements MigrationInterface {
                 CONSTRAINT "PK_company_id" PRIMARY KEY ("id")
             );
 
-            CREATE TABLE IF NOT EXISTS division
-            (
-                "id" character varying NOT NULL,
-                "company_id" character varying NOT NULL,
-                "calendar_id" character varying NOT NULL,
-                "created_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
-                "updated_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
-                "deleted_at" timestamp WITH time zone NULL,
-                CONSTRAINT "PK_division_id" PRIMARY KEY ("id")
-            );
-
             CREATE TABLE IF NOT EXISTS calendar
             (
                 "id" character varying NOT NULL,
@@ -102,14 +91,32 @@ export class initialService1666791604741 implements MigrationInterface {
                 "updated_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
                 "deleted_at" timestamp WITH time zone NULL,
                 "metadata" jsonb,
-                CONSTRAINT "PK_location_id" PRIMARY KEY ("id"))
+                CONSTRAINT "PK_location_id" PRIMARY KEY ("id"));
         `);
+
+        await queryRunner.query(`
+            CREATE TABLE IF NOT EXISTS division
+            (
+                "company_id" character varying NOT NULL,
+                "calendar_id" character varying NOT NULL,
+                CONSTRAINT "PK_company_calendar_id" PRIMARY KEY ("company_id", "calendar_id")
+            );
+        `);
+        await queryRunner.query(`CREATE INDEX "IDX_division_company_id" ON "division" ("company_id") `);
+        await queryRunner.query(`CREATE INDEX "IDX_division_calendar_id" ON "division" ("calendar_id") `);
+
+        await queryRunner.query(`ALTER TABLE "division" ADD CONSTRAINT "FK_division_calendar_id" FOREIGN KEY ("calendar_id") REFERENCES "calendar"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "division" ADD CONSTRAINT "FK_division_company_id" FOREIGN KEY ("company_id") REFERENCES "company"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
 
         await queryRunner.query(`ALTER TABLE "location" ADD CONSTRAINT "FK_location_country_code_country" FOREIGN KEY ("country_code") REFERENCES "country"("iso_2") ON DELETE NO ACTION ON UPDATE NO ACTION`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "location" DROP CONSTRAINT "FK_location_country_code_country"`);
+        await queryRunner.query(`ALTER TABLE "division" DROP CONSTRAINT "FK_division_calendar_id"`);
+        await queryRunner.query(`ALTER TABLE "division" DROP CONSTRAINT "FK_division_company_id"`);
+        await queryRunner.query(`DROP INDEX "IDX_division_company_id"`);
+        await queryRunner.query(`DROP INDEX "IDX_division_calendar_id"`);
         await queryRunner.query(`
             DROP TABLE appointment;
             DROP TABLE company;

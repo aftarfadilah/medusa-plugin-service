@@ -7,9 +7,7 @@ import { defaultAdminCompanyFields, defaultAdminCompanyRelations } from "."
 
 export default async (req, res) => {
     const { id } = req.params
-
-    console.log('xxx');
-
+    
     const validated = await validator(AdminPostCompaniesCompanyReq, req.body)
 
     const companyService: CompanyService = req.scope.resolve("companyService")

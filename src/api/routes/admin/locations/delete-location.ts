@@ -12,7 +12,7 @@ export default async (req, res) => {
 
     res.json({
         id,
-        object: "product",
+        object: "location",
         deleted: true,
     })
 }

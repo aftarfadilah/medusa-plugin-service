@@ -1,8 +1,6 @@
 import {
-    Brackets,
     EntityRepository,
     FindOperator,
-    In,
     Repository,
   } from "typeorm"
 import { flatten, groupBy, map, merge } from "lodash"
@@ -10,21 +8,20 @@ import { Location } from "../models/location"
 import {
     ExtendedFindConfig,
     Selector,
-    WithRequiredProperty,
-  } from "@medusajs/medusa/dist/types/common"
+} from "@medusajs/medusa/dist/types/common"
 
 export type LocationSelector = Omit<Selector<Location>, "tags"> & {
     tags: FindOperator<string[]>
-  }
+}
   
-  export type DefaultWithoutRelations = Omit<
+export type DefaultWithoutRelations = Omit<
     ExtendedFindConfig<Location, LocationSelector>,
     "relations"
-  >
+>
   
-  export type FindWithoutRelationsOptions = DefaultWithoutRelations & {
+export type FindWithoutRelationsOptions = DefaultWithoutRelations & {
     where: DefaultWithoutRelations["where"]
-  }
+}
 
 @EntityRepository(Location)
 export class LocationRepository extends Repository<Location> {

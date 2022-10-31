@@ -1,4 +1,4 @@
-import { IsString, IsDate } from "class-validator"
+import { IsString, IsArray, IsOptional, IsDate } from "class-validator"
 import { Type } from "class-transformer"
 import CompanyService from "../../../../services/company";
 import { validator } from "../../../../utils/validator"
@@ -31,4 +31,8 @@ export class AdminPostCompaniesReq {
     @IsDate()
     @Type(() => Date)
     work_day_to: Date
+
+    @IsArray()
+    @IsOptional()
+    calendars: string[]
 }

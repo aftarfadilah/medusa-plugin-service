@@ -17,7 +17,7 @@ export default async (req, res) => {
     const companies = await companyService.list(selector, {
         take: validated.limit,
         skip: validated.offset,
-        relations: ["location"],
+        relations: ["location", "calendars"], // calendars ralations is from models jointable ok
     })
 
     res.status(200).json({

@@ -22,7 +22,8 @@ export default (app) => {
 }
 
 export const defaultAdminCompanyRelations = [
-    "location"
+    "location",
+    "calendars"
 ]
 
 export const defaultAdminCompanyFields: (keyof Company)[] = [

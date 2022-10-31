@@ -1,5 +1,5 @@
 import { validator } from "../../../../utils/validator"
-import { IsString, IsDate, IsOptional } from "class-validator"
+import { IsString, IsArray, IsDate, IsOptional } from "class-validator"
 import { Type } from "class-transformer"
 import CompanyService from "../../../../services/company"
 import { EntityManager } from "typeorm"
@@ -45,4 +45,8 @@ export class AdminPostCompaniesCompanyReq {
     @IsOptional()
     @Type(() => Date)
     work_day_to: Date
+
+    @IsArray()
+    @IsOptional()
+    calendars: string[]
 }

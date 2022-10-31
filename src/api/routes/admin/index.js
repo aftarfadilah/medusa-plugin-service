@@ -7,6 +7,7 @@ import services from "./services";
 import products from "./products";
 import locations from "./locations";
 import companies from "./companies";
+import calendars from "./calendars";
 
 const route = Router()
 
@@ -28,6 +29,7 @@ export default (app, rootDirectory, config) => {
     products(route);
     locations(route);
     companies(route);
+    calendars(route);
 
     return app;
 }

@@ -12,11 +12,11 @@ import { generateEntityId } from "@medusajs/medusa/dist/utils/generate-entity-id
 @Entity()
 export class Calendar extends SoftDeletableEntity {
     @Index()
-    @Column({ type: "varchar", nullable: true })
-    name: string | null
+    @Column({ type: "varchar", nullable: false })
+    name: string
   
-    @Column({ type: "varchar", nullable: true })
-    color: string | null
+    @Column({ type: "varchar", nullable: true, default: "#D3D3D3" })
+    color: string
   
     @DbAwareColumn({ type: "jsonb", nullable: true })
     metadata: Record<string, unknown>

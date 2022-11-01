@@ -14,17 +14,19 @@ export default async (req, res) => {
     }
 
     if (validated.from) {
-        selector.from = { gte: validated.from };
+        selector.from = { gte: validated.from, lte: validated.to };
     }
 
     if (validated.to) {
-        selector.to = { lte: validated.to };
+        selector.to = { gte: validated.from, lte: validated.to };
     }
     
     const calendarTimeperiodService: CalendarTimeperiodService = req.scope.resolve("calendarTimeperiodService")
-    const calendarTimeperiods = await calendarTimeperiodService.list(selector, {
-        relations: [],
-    })
+    // const calendarTimeperiods = await calendarTimeperiodService.list(selector, {
+    //     relations: [],
+    // })
+
+    const calendarTimeperiods = await calendarTimeperiodService.listCustom(id, validated.from, validated.to);
 
     res.status(200).json({
         calendarTimeperiods,

@@ -2,7 +2,7 @@ import { EventBusService, TransactionBaseService } from '@medusajs/medusa';
 import { formatException } from '@medusajs/medusa/dist/utils/exception-formatter';
 import { buildQuery } from '@medusajs/medusa/dist/utils/build-query';
 import { MedusaError } from "medusa-core-utils"
-import { EntityManager } from "typeorm"
+import { EntityManager, LessThanOrEqual, MoreThanOrEqual } from "typeorm"
 import { CalendarTimeperiodRepository } from "../repositories/calendar-timeperiod";
 import { CalendarTimeperiod } from '../models/calendar-timeperiod';
 import { CreateCalendarTimeperiodInput, UpdateCalendarTimeperiodInput } from '../types/calendar-timeperiod';
@@ -50,6 +50,18 @@ class CalendarTimeperiodService extends TransactionBaseService {
         const query = buildQuery(selector, config)
     
         return calendarTimeperiodRepo.find(query)
+    }
+
+    async listCustom(calendarId: string, from?: Date, to?: Date): Promise<CalendarTimeperiod[]> {
+        const calendarTimeperiodRepo = this.manager_.getCustomRepository(this.calendarTimeperiodRepository_)
+    
+        return calendarTimeperiodRepo.find({
+            where: {
+                calendar_id: calendarId,
+                from: MoreThanOrEqual(from),
+                to: LessThanOrEqual(to)
+            }
+        })
     }
 
     async retrieve(calendarId, config) {

@@ -107,12 +107,14 @@ export class initialService1666791604741 implements MigrationInterface {
 
         await queryRunner.query(`ALTER TABLE "division" ADD CONSTRAINT "FK_division_calendar_id" FOREIGN KEY ("calendar_id") REFERENCES "calendar"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "division" ADD CONSTRAINT "FK_division_company_id" FOREIGN KEY ("company_id") REFERENCES "company"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-
+        
+        await queryRunner.query(`ALTER TABLE "calendar_timeperiod" ADD CONSTRAINT "FK_calendar_timeperiod_calendar_id" FOREIGN KEY ("calendar_id") REFERENCES "calendar"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "location" ADD CONSTRAINT "FK_location_country_code_country" FOREIGN KEY ("country_code") REFERENCES "country"("iso_2") ON DELETE NO ACTION ON UPDATE NO ACTION`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "location" DROP CONSTRAINT "FK_location_country_code_country"`);
+        await queryRunner.query(`ALTER TABLE "calendar_timeperiod" DROP CONSTRAINT "FK_calendar_timeperiod_calendar_id"`);
         await queryRunner.query(`ALTER TABLE "division" DROP CONSTRAINT "FK_division_calendar_id"`);
         await queryRunner.query(`ALTER TABLE "division" DROP CONSTRAINT "FK_division_company_id"`);
         await queryRunner.query(`DROP INDEX "IDX_division_company_id"`);

@@ -5,7 +5,7 @@ import { IsDate, IsOptional, IsString } from "class-validator"
 import { Type } from "class-transformer"
 
 export default async (req, res) => {
-    const validated = await validator(AdminGetCompaniesParams, req.query)
+    const validated = await validator(AdminGetCalendarsParams, req.query)
 
     const selector: selector = {}
 
@@ -14,17 +14,17 @@ export default async (req, res) => {
     }
 
     const calendarService: CalendarService = req.scope.resolve("calendarService")
-    const companies = await calendarService.list(selector, {
-        relations: [],
+    const calendars = await calendarService.list(selector, {
+        relations: ["timeperiod"],
     })
 
     res.status(200).json({
-        companies,
-        count: companies.length,
+        calendars,
+        count: calendars.length,
     })
 }
 
-export class AdminGetCompaniesParams {
+export class AdminGetCalendarsParams {
     @IsString()
     @IsOptional()
     name?: string

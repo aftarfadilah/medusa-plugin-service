@@ -3,10 +3,14 @@ import { Calendar } from "../../../../models/calendar";
 import middlewares from "../../../middleware";
 import "reflect-metadata"
 
+import timeperiod from "./timeperiod";
+
 const route = Router()
 
 export default (app) => {
     app.use("/calendars", route);
+
+    timeperiod(route);
 
     route.post("/", middlewares.wrap(require("./create-calendar").default));
 

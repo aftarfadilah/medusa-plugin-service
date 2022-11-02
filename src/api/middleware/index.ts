@@ -1,3 +1,5 @@
+import { default as authenticate } from "./authenticate"
+import { default as authenticateCustomer } from "./authenticate-customer"
 import { default as wrap } from "./await-middleware";
 
-export default { wrap };
+export default { authenticate, authenticateCustomer, wrap };

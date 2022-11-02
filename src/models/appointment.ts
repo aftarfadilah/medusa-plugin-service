@@ -9,24 +9,24 @@ import {
 
 import { Order, SoftDeletableEntity } from "@medusajs/medusa";
 import { DbAwareColumn } from "@medusajs/medusa/dist/utils/db-aware-column";
-import { Calendar } from "./calendar";
 import { generateEntityId,  } from "@medusajs/medusa/dist/utils";
 
-export enum AppoitmentStatus {
-    NOT_PAID = "not_paid",
-    AWAITING = "awaiting",
-    CAPTURED = "captured",
-    PARTIALLY_REFUNDED = "partially_refunded",
-    REFUNDED = "refunded",
-    CANCELED = "canceled",
-    REQUIRES_ACTION = "requires_action",
+export enum AppointmentStatus {
+    DRAFT = 'draft',
+    SCHEDULED = 'scheduled',
+    CANCELED = 'canceled',
+    REQUIRES_ACTION = 'requires_action',
+    PENDING = 'pending',
+    RESCHEDULE = 'reschedule',
+    ON_PROGRESS = 'on_progress',
+    FINISHED = 'finished'
 }
 
 @Entity()
-export class Appoitment extends SoftDeletableEntity {
+export class Appointment extends SoftDeletableEntity {
     @Index()
-    @DbAwareColumn({ type: "enum", enum: AppoitmentStatus, default: "not_paid" })
-    payment_status: AppoitmentStatus
+    @DbAwareColumn({ type: "enum", enum: AppointmentStatus, default: "draft" })
+    status: AppointmentStatus
 
     @Column({ type: "varchar", nullable: true })
     location: string | null
@@ -53,12 +53,15 @@ export class Appoitment extends SoftDeletableEntity {
     @Column({ type: "varchar", nullable: true })
     code: string | null
 
+    @Column({ type: "boolean"})
+    is_confirmed: boolean
+
     @DbAwareColumn({ type: "jsonb", nullable: true })
     metadata: Record<string, unknown>
   
     @BeforeInsert()
     private beforeInsert(): void {
-        this.id = generateEntityId(this.id, "calt")
+        this.id = generateEntityId(this.id, "apnt")
         this.code = generateEntityId(this.code)
     }
 }

@@ -5,31 +5,6 @@ export class initialService1666791604741 implements MigrationInterface {
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`
-            CREATE TYPE "APPOINTMENT_STATUS_ENUM" AS ENUM
-            (
-                'not_paid', 'awaiting', 'authorized', 'partially_authorized', 'captured',
-                'partially_captured', 'refunded', 'partially_refunded', 'canceled', 'requires_action'
-            );
-
-            CREATE TABLE IF NOT EXISTS appointment
-            (
-                "id" character varying NOT NULL,
-                "location" text NULL,
-                "status" "APPOINTMENT_STATUS_ENUM" NOT NULL,
-                "notified_via_email_at" timestamp WITH time zone NULL,
-                "notified_via_sms_at" timestamp WITH time zone NULL,
-                "from" timestamp WITH time zone NOT NULL,
-                "to" timestamp WITH time zone NOT NULL,
-                "order_id" character varying NOT NULL,
-                "code" character varying NOT NULL,
-                "is_confirmed" boolean NOT NULL DEFAULT FALSE,
-                "created_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
-                "updated_at" timestamp WITH time zone NOT NULL DEFAULT Now(),
-                "deleted_at" timestamp WITH time zone NULL,
-                "metadata" jsonb NULL,
-                CONSTRAINT "PK_appointment_id" PRIMARY KEY ("id")
-            );
-
             CREATE TABLE IF NOT EXISTS company
             (
                 "id" character varying NOT NULL,
@@ -120,14 +95,11 @@ export class initialService1666791604741 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "IDX_division_company_id"`);
         await queryRunner.query(`DROP INDEX "IDX_division_calendar_id"`);
         await queryRunner.query(`
-            DROP TABLE appointment;
             DROP TABLE company;
             DROP TABLE location;
             DROP TABLE division;
             DROP TABLE calendar;
             DROP TABLE calendar_timeperiod;
-
-            DROP TYPE "APPOINTMENT_STATUS_ENUM";
         `);
     }
 

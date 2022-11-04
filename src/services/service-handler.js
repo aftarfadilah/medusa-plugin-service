@@ -8,7 +8,7 @@ class ServiceHandlerService extends BaseService {
         this.shippingProfileService_ = shippingProfileService;
         this.productRepository_ = productRepository;
         this.typeName = options.serviceName || "Service";
-        this.defaultSelection = ["created_at", "updated_at", "deleted_at", "title", "type", "type_id", "id", "subtitle", "description", "handle", "metadata"];
+        this.defaultSelection = ["created_at", "status", "updated_at", "deleted_at", "title", "type", "type_id", "id", "subtitle", "description", "handle", "metadata"];
         this.defaultRelation = ["type"];
         this.options = options;
     }

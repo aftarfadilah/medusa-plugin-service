@@ -12,7 +12,7 @@ export default (app) => {
 
     route.get("/:id", middlewares.wrap(require("./get-service").default));
 
-    route.put("/", middlewares.wrap(require("./update-service").default));
+    route.put("/:id", middlewares.wrap(require("./update-service").default));
 
     route.delete("/:id", middlewares.wrap(require("./delete-service").default));
 

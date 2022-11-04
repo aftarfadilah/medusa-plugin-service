@@ -165,7 +165,8 @@ class ServiceHandlerService extends BaseService {
 
     //TODO Update service based on specific id
     async update(req, res) {
-        const { id, products } = req.body;
+        const { id } = req.params;
+        const { products } = req.body;
         
         const serviceData = await this.productService_.retrieve(id, { relations: this.defaultRelation });
         if (serviceData.type == null || serviceData.type?.value != this.typeName) return { message: "sorry this item is not service :(" }

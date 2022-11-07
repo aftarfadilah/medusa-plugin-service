@@ -128,15 +128,13 @@ class ServiceHandlerService extends BaseService {
         const manager = this.manager_;
         const productRepo = manager.getCustomRepository(this.productRepository_);
 
-        const services = await productRepo.find({
+        const [services, count] = await productRepo.findAndCount({
             relations: this.defaultRelation,
             select: this.defaultSelection,
             where: { type: { value: this.typeName }, title: ILike(`%${config.q}%`) },
             take: config.limit,
             skip: config.offset
         });
-
-        const count = services.length;
 
         return { services, count };
       }

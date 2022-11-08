@@ -41,6 +41,7 @@ class ServiceHandlerService extends BaseService {
 
     //TODO auto remove product, if product id not exist
     async filteringExistProduct(service_id, val, detailProduct) {
+        if (!Array.isArray(val)) return;
         const productIdList = val.filter((item, index) => val.indexOf(item) === index); // remove duplicate id
         const productDetailList = [];
         const productIdFilteredList = [];

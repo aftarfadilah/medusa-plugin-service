@@ -59,7 +59,7 @@ class ProductHandlerService extends BaseService {
         const manager = this.manager_;
         
         const productRepo = manager.getCustomRepository(this.productRepository_);
-        const rawProducts = await productRepo.find({
+        const [rawProducts, count] = await productRepo.findAndCount({
             where: { type_id: null, title: ILike(`%${selector?.q}%`) },
             relations: config.relations,
             select: config.select,
@@ -75,8 +75,6 @@ class ProductHandlerService extends BaseService {
         if (includesPricing) {
             products = await this.pricingService_.setProductPrices(rawProducts)
         }
-
-        const count = products.length;
     
         return { products, count };
     }

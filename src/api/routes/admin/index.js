@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as bodyParser from "body-parser";
 import cors from "cors";
 import { getConfigFile } from "medusa-core-utils";
+import authenticate from "@medusajs/medusa/dist/api/middlewares/authenticate"
 
 import services from "./services";
 import products from "./products";
@@ -23,9 +24,10 @@ export default (app, rootDirectory, config) => {
         credentials: true,
     };
 
-    route.use(cors(corsOptions));
     route.use(bodyParser.json());
-    
+    route.use(cors(corsOptions));
+    route.use(authenticate());
+
     services(route);
     products(route);
     locations(route);

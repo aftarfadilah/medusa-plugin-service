@@ -52,29 +52,16 @@ class CalendarService extends TransactionBaseService {
         return calendarRepo.find(query)
     }
 
-    async retrieve(calendarId, config) {
-        return await this.retrieve_({ id: calendarId }, config)
-    }
-
-    async retrieve_(selector, config) {
+    async retrieve(calendarId: string, config: FindConfig<Calendar>) {
         const manager = this.manager_
         const calendarRepo = manager.getCustomRepository(this.calendarRepository_)
 
-        const { relations, ...query } = buildQuery(selector, config)
-
-        const calendar = await calendarRepo.findOneWithRelations(
-            relations,
-            query
-        )
+        const calendar = await calendarRepo.findOne(calendarId, config)
 
         if (!calendar) {
-            const selectorConstraints = Object.entries(selector)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")
-
             throw new MedusaError(
                 MedusaError.Types.NOT_FOUND,
-                `Calendar with ${selectorConstraints} was not found`
+                `Calendar with ${calendarId} was not found`
             )
         }
 

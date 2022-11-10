@@ -1,7 +1,7 @@
 import { validator } from "../../../../utils/validator"
 import AppointmentService from "../../../../services/appointment"
 import { selector } from "../../../../types/appointment"
-import { IsDate, IsOptional, IsString } from "class-validator"
+import { IsDate, IsOptional, IsString, IsNumber } from "class-validator"
 import { Type } from "class-transformer"
 
 export default async (req, res) => {
@@ -18,13 +18,17 @@ export default async (req, res) => {
     }
 
     const appointmentService: AppointmentService = req.scope.resolve("appointmentService")
-    const appointments = await appointmentService.list(selector, {
+    const [appointments, count] = await appointmentService.list(selector, {
         relations: ["order"],
+        skip: validated.offset,
+        take: validated.limit
     })
 
     res.status(200).json({
         appointments,
-        count: appointments.length,
+        count: count,
+        limit: validated.limit,
+        offset: validated.offset
     })
 }
 
@@ -46,4 +50,14 @@ export class AdminGetAppointmentsParams {
     @IsOptional()
     @Type(() => Date)
     to: Date
+
+    @IsNumber()
+    @IsOptional()
+    @Type(() => Number)
+    limit = 50
+  
+    @IsNumber()
+    @IsOptional()
+    @Type(() => Number)
+    offset = 0
 }

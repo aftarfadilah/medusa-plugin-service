@@ -44,37 +44,24 @@ class AppointmentService extends TransactionBaseService {
           take: 50,
           relations: [],
         }
-      ): Promise<Appointment[]> {
+      ): Promise<[Appointment[], number]> {
         const appointmentRepo = this.manager_.getCustomRepository(this.appointmentRepository_)
     
         const query = buildQuery(selector, config)
     
-        return appointmentRepo.find(query)
+        return appointmentRepo.findAndCount(query)
     }
 
-    async retrieve(appointmentId, config) {
-        return await this.retrieve_({ id: appointmentId }, config)
-    }
-
-    async retrieve_(selector, config) {
+    async retrieve(appointmentId: string, config: FindConfig<Appointment>) {
         const manager = this.manager_
         const appointmentRepo = manager.getCustomRepository(this.appointmentRepository_)
 
-        const { relations, ...query } = buildQuery(selector, config)
-
-        const appointment = await appointmentRepo.findOneWithRelations(
-            relations,
-            query
-        )
+        const appointment = await appointmentRepo.findOne(appointmentId, config)
 
         if (!appointment) {
-            const selectorConstraints = Object.entries(selector)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")
-
             throw new MedusaError(
                 MedusaError.Types.NOT_FOUND,
-                `Appointment with ${selectorConstraints} was not found`
+                `Appointment was ${appointmentId} not found`
             )
         }
 

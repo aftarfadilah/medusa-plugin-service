@@ -70,29 +70,16 @@ class CalendarTimeperiodService extends TransactionBaseService {
         return calendarTimeperiodRepo.find({ where: { calendar_id: calendarId } })
     }
 
-    async retrieve(calendarId, config) {
-        return await this.retrieve_({ id: calendarId }, config)
-    }
-
-    async retrieve_(selector, config) {
+    async retrieve(calendarTimeperiodId, config: FindConfig<CalendarTimeperiod>) {
         const manager = this.manager_
         const calendarTimeperiodRepo = manager.getCustomRepository(this.calendarTimeperiodRepository_)
 
-        const { relations, ...query } = buildQuery(selector, config)
-
-        const calendar = await calendarTimeperiodRepo.findOneWithRelations(
-            relations,
-            query
-        )
+        const calendar = await calendarTimeperiodRepo.findOne(calendarTimeperiodId, config)
 
         if (!calendar) {
-            const selectorConstraints = Object.entries(selector)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")
-
             throw new MedusaError(
                 MedusaError.Types.NOT_FOUND,
-                `Calendar Timeperiod with ${selectorConstraints} was not found`
+                `Calendar Timeperiod with ${calendarTimeperiodId} was not found`
             )
         }
 

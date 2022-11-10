@@ -53,28 +53,15 @@ class CompanyService extends TransactionBaseService {
     }
 
     async retrieve(companyId, config) {
-        return await this.retrieve_({ id: companyId }, config)
-    }
-
-    async retrieve_(selector, config) {
         const manager = this.manager_
         const companyRepo = manager.getCustomRepository(this.companyRepository_)
 
-        const { relations, ...query } = buildQuery(selector, config)
-
-        const company = await companyRepo.findOneWithRelations(
-            relations,
-            query
-        )
+        const company = await companyRepo.findOne(companyId, config)
 
         if (!company) {
-            const selectorConstraints = Object.entries(selector)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")
-
             throw new MedusaError(
                 MedusaError.Types.NOT_FOUND,
-                `Company with ${selectorConstraints} was not found`
+                `Company with ${companyId} was not found`
             )
         }
 

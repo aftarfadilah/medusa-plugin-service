@@ -52,29 +52,16 @@ class LocationService extends TransactionBaseService {
         return locationRepo.find(query)
     }
 
-    async retrieve(locationId, config) {
-        return await this.retrieve_({ id: locationId }, config)
-    }
-
-    async retrieve_(selector, config) {
+    async retrieve(locationId: string, config: FindConfig<Location>) {
         const manager = this.manager_
         const locationRepo = manager.getCustomRepository(this.locationRepository_)
 
-        const { relations, ...query } = buildQuery(selector, config)
-
-        const location = await locationRepo.findOneWithRelations(
-            relations,
-            query
-        )
+        const location = await locationRepo.findOne(locationId, config)
 
         if (!location) {
-            const selectorConstraints = Object.entries(selector)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")
-
             throw new MedusaError(
                 MedusaError.Types.NOT_FOUND,
-                `Location with ${selectorConstraints} was not found`
+                `Location with ${locationId} was not found`
             )
         }
 

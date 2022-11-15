@@ -127,11 +127,8 @@ class LocationService extends TransactionBaseService {
     ): Promise<Location> {
         return await this.atomicPhase_(async (manager) => {
             const locationRepo = manager.getCustomRepository(this.locationRepository_)
-            const relations = ["country"]
 
-            const location = await this.retrieve(locationId, {
-                relations,
-            })
+            const location = await this.retrieve(locationId, {})
 
             const {
                 metadata,

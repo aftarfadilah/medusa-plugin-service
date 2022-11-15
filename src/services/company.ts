@@ -127,11 +127,8 @@ class CompanyService extends TransactionBaseService {
     ): Promise<Company> {
         return await this.atomicPhase_(async (manager) => {
             const companyRepo = manager.getCustomRepository(this.companyRepository_)
-            const relations = ["location"]
 
-            const company = await this.retrieve(companyId, {
-                relations,
-            })
+            const company = await this.retrieve(companyId, {})
 
             const {
                 ...rest

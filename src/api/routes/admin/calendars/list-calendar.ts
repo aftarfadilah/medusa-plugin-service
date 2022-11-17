@@ -14,13 +14,13 @@ export default async (req, res) => {
     }
 
     const calendarService: CalendarService = req.scope.resolve("calendarService")
-    const calendars = await calendarService.list(selector, {
+    const [calendars, count] = await calendarService.list(selector, {
         relations: ["timeperiod"],
     })
 
     res.status(200).json({
         calendars,
-        count: calendars.length,
+        count: count,
     })
 }
 
@@ -32,10 +32,10 @@ export class AdminGetCalendarsParams {
     @IsDate()
     @IsOptional()
     @Type(() => Date)
-    from: Date
+    from?: Date
   
     @IsDate()
     @IsOptional()
     @Type(() => Date)
-    to: Date
+    to?: Date
 }

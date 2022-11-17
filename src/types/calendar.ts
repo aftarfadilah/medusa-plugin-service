@@ -8,4 +8,6 @@ export type UpdateCalendarInput = CreateCalendarInput;
 
 export type selector = {
     name?: string
+    from?: Date
+    to?: Date
 }

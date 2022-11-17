@@ -52,22 +52,22 @@ class CalendarTimeperiodService extends TransactionBaseService {
         return calendarTimeperiodRepo.find(query)
     }
 
-    async listCustom(calendarId: string, from?: Date, to?: Date): Promise<CalendarTimeperiod[]> {
+    async listCustom(calendarId: string, from?: string, to?: string): Promise<[CalendarTimeperiod[], number]> {
         const calendarTimeperiodRepo = this.manager_.getCustomRepository(this.calendarTimeperiodRepository_)
-    
+        
+        if (from && to) {
+            return calendarTimeperiodRepo.findAndCount({ where: { calendar_id: calendarId, from: MoreThanOrEqual(from), to: LessThanOrEqual(to) } })
+        }
+        
         if (to) {
-            return calendarTimeperiodRepo.find({ where: { calendar_id: calendarId, to: LessThanOrEqual(to) } })
+            return calendarTimeperiodRepo.findAndCount({ where: { calendar_id: calendarId, to: LessThanOrEqual(to) } })
         }
 
         if (from) {
-            return calendarTimeperiodRepo.find({ where: { calendar_id: calendarId, from: MoreThanOrEqual(from) } })
+            return calendarTimeperiodRepo.findAndCount({ where: { calendar_id: calendarId, from: MoreThanOrEqual(from) } })
         }
 
-        if (from && to) {
-            return calendarTimeperiodRepo.find({ where: { calendar_id: calendarId, from: MoreThanOrEqual(from), to: LessThanOrEqual(to) } })
-        }
-
-        return calendarTimeperiodRepo.find({ where: { calendar_id: calendarId } })
+        return calendarTimeperiodRepo.findAndCount({ where: { calendar_id: calendarId } })
     }
 
     async retrieve(calendarTimeperiodId, config: FindConfig<CalendarTimeperiod>) {

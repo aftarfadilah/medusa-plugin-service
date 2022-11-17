@@ -44,12 +44,12 @@ class CalendarService extends TransactionBaseService {
           take: 50,
           relations: [],
         }
-      ): Promise<Calendar[]> {
+      ): Promise<[Calendar[], number]> {
         const calendarRepo = this.manager_.getCustomRepository(this.calendarRepository_)
     
         const query = buildQuery(selector, config)
     
-        return calendarRepo.find(query)
+        return calendarRepo.findAndCount(query)
     }
 
     async retrieve(calendarId: string, config: FindConfig<Calendar>) {

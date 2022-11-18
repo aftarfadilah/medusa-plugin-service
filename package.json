@@ -27,7 +27,7 @@
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.5"
   },
-  "repository": "https://gitlab.com/ai-ecom-io/medusa-service-plugin",
+  "repository": "https://github.com/ai-ecom/medusa-plugin-service",
   "keywords": [
     "medusa",
     "service"

@@ -1,13 +1,15 @@
 import { BaseService } from "medusa-interfaces";
-import { ILike } from "typeorm";
+import { Not } from "typeorm";
+import { ILike,  } from "typeorm";
 
 class ProductHandlerService extends BaseService {
-    constructor({ manager, productService, pricingService, productRepository }) {
+    constructor({ manager, productService, pricingService, productRepository }, options) {
         super();
         this.manager_ = manager;
         this.productService_ = productService;
         this.pricingService_ = pricingService;
         this.productRepository_ = productRepository;
+        this.typeName = options.serviceName || "Service";
     }
     
     filterQuery(config) {
@@ -58,10 +60,20 @@ class ProductHandlerService extends BaseService {
     async listAndCount( selector, config ) {
         const manager = this.manager_;
         
+        const relationsList = config.relations || [];
+        
+        // add type into relation cause it's needed for checking data
+        if (!relationsList.includes("type")) {
+            relationsList.push("type")
+        }
+
         const productRepo = manager.getCustomRepository(this.productRepository_);
         const [rawProducts, count] = await productRepo.findAndCount({
-            where: { type_id: null, title: ILike(`%${selector?.q}%`) },
-            relations: config.relations,
+            where: [
+                { type: { value: Not(this.typeName) }, title: ILike(`%${selector?.q}%`) },
+                { type_id: null, title: ILike(`%${selector?.q}%`) }
+            ],
+            relations: relationsList,
             select: config.select,
             take: config.take,
             skip: config.skip

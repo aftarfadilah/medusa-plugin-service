@@ -1,5 +1,6 @@
 import { BaseService } from "medusa-interfaces";
 import { ILike } from "typeorm"
+
 class ServiceHandlerService extends BaseService {
     constructor({ manager, productService, productRepository, shippingProfileService }, options) {
         super();
@@ -8,7 +9,7 @@ class ServiceHandlerService extends BaseService {
         this.shippingProfileService_ = shippingProfileService;
         this.productRepository_ = productRepository;
         this.typeName = options.serviceName || "Service";
-        this.defaultSelection = ["created_at", "status", "updated_at", "deleted_at", "title", "type", "type_id", "id", "subtitle", "description", "handle", "metadata"];
+        this.defaultSelection = ["created_at", "status", "thumbnail", "updated_at", "deleted_at", "title", "type", "type_id", "id", "subtitle", "description", "handle", "metadata"];
         this.defaultRelation = ["type"];
         this.options = options;
     }
@@ -112,9 +113,7 @@ class ServiceHandlerService extends BaseService {
                 service.products = productList;
             }
 
-            service.type = undefined;
-            service.metadata = undefined;
-            service.type_id = undefined;
+            delete service.metadata;
         }
 
         return {
@@ -150,9 +149,8 @@ class ServiceHandlerService extends BaseService {
                 const productList = await this.filteringExistProduct(service.id, service.metadata.products, showProductDetail);
                 service.products = productList;
             }
-            service.type = undefined;
-            service.metadata = undefined;
-            service.type_id = undefined;
+            
+            delete service.metadata;
 
             return service;
         }

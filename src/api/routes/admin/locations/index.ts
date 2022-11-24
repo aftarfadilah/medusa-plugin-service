@@ -23,11 +23,13 @@ export default (app) => {
 
 export const defaultAdminLocationRelations = [
     "country",
+    "company"
 ]
 
 export const defaultAdminLocationFields: (keyof Location)[] = [
     "id",
     "title",
+    "company_id",
     "address_1",
     "address_2",
     "city",

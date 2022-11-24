@@ -4,9 +4,9 @@ import {
     Entity,
     Index,
     JoinColumn,
-    ManyToOne,
     JoinTable,
-    ManyToMany
+    ManyToMany,
+    OneToMany
 } from "typeorm"
 
 import { SoftDeletableEntity } from "@medusajs/medusa";
@@ -19,13 +19,10 @@ export class Company extends SoftDeletableEntity {
     @Index()
     @Column({ type: "varchar", nullable: true })
     name: string | null
-  
-    @Column({ type: "varchar", nullable: true })
-    location_id: string | null
-  
-    @ManyToOne(() => Location)
-    @JoinColumn({ name: "location_id" })
-    location: Location | null
+
+    @OneToMany(() => Location, (l) => l.company)
+    @JoinColumn({ name: "id" })
+    locations: Location | null
 
     @ManyToMany(() => Calendar, { cascade: ["insert"] })
     @JoinTable({

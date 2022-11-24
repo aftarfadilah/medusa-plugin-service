@@ -81,7 +81,7 @@ class LocationService extends TransactionBaseService {
                 location = await locationRepo.save(location)
 
                 const result = await this.retrieve(location.id, {
-                    relations: ["country"],
+                    relations: ["country", "company"],
                 })
 
                 await this.eventBus_
@@ -102,7 +102,7 @@ class LocationService extends TransactionBaseService {
 
             const location = await locationRepo.findOne(
                 { id: locationId },
-                { relations: ["country"] }
+                { relations: ["country", "company"] }
             )
 
             if (!location) {

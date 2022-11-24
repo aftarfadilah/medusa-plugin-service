@@ -22,14 +22,13 @@ export default (app) => {
 }
 
 export const defaultAdminCompanyRelations = [
-    "location",
+    "locations",
     "calendars"
 ]
 
 export const defaultAdminCompanyFields: (keyof Company)[] = [
     "id",
     "name",
-    "location_id",
     "work_day_from",
     "work_day_to",
     "created_at",

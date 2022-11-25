@@ -20,9 +20,6 @@ export default async (req, res) => {
 export class AdminPostCompaniesReq {
     @IsString()
     name: string
-  
-    @IsString()
-    location_id: string
 
     @IsDate()
     @Type(() => Date)

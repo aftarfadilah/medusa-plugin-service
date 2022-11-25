@@ -20,6 +20,9 @@ export default async (req, res) => {
 export class AdminPostLocationsReq {
     @IsString()
     title: string
+
+    @IsString()
+    company_id: string
   
     @IsString()
     first_name: string

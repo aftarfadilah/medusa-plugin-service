@@ -81,7 +81,7 @@ class CompanyService extends TransactionBaseService {
                 company = await companyRepo.save(company)
 
                 const result = await this.retrieve(company.id, {
-                    relations: ["location"],
+                    relations: ["locations"],
                 })
 
                 await this.eventBus_
@@ -102,7 +102,7 @@ class CompanyService extends TransactionBaseService {
 
             const company = await companyRepo.findOne(
                 { id: companyId },
-                { relations: ["location"] }
+                { relations: ["locations"] }
             )
 
             if (!company) {

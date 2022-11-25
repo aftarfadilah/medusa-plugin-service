@@ -31,10 +31,6 @@ export class AdminPostCompaniesCompanyReq {
     @IsString()
     @IsOptional()
     name: string
-  
-    @IsString()
-    @IsOptional()
-    location_id: string
 
     @IsDate()
     @IsOptional()

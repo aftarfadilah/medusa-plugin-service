@@ -3,6 +3,7 @@ import CompanyService from "../../../../services/company"
 import { selector } from "../../../../types/company"
 import { IsNumber, IsOptional, IsString } from "class-validator"
 import { Type } from "class-transformer"
+import { defaultAdminCompanyRelations } from "."
 
 export default async (req, res) => {
     const validated = await validator(AdminGetCompaniesParams, req.query)
@@ -17,7 +18,7 @@ export default async (req, res) => {
     const companies = await companyService.list(selector, {
         take: validated.limit,
         skip: validated.offset,
-        relations: ["location", "calendars"], // calendars ralations is from models jointable ok
+        relations: defaultAdminCompanyRelations, // calendars ralations is from models jointable ok
     })
 
     res.status(200).json({

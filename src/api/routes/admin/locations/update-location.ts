@@ -28,34 +28,47 @@ export default async (req, res) => {
 
 export class AdminPostLocationsLocationReq {
     @IsString()
+    @IsOptional()
     title: string
+
+    @IsString()
+    @IsOptional()
+    company_id: string
   
     @IsString()
+    @IsOptional()
     first_name: string
 
     @IsString()
+    @IsOptional()
     last_name: string
   
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     address_1: string
 
     @IsString()
+    @IsOptional()
     address_2: string
 
     @IsString()
+    @IsOptional()
     city: string
 
     @IsString()
+    @IsOptional()
     country_code: string
 
     @IsString()
+    @IsOptional()
     province: string
 
     @IsString()
+    @IsOptional()
     postal_code: string
 
     @IsString()
+    @IsOptional()
     phone: string
 
     @IsObject()

@@ -3,6 +3,7 @@ import LocationService from "../../../../services/location"
 import { selector } from "../../../../types/location"
 import { IsNumber, IsOptional, IsString } from "class-validator"
 import { Type } from "class-transformer"
+import { defaultAdminLocationRelations } from "."
 
 export default async (req, res) => {
     const validated = await validator(AdminGetLocationsParams, req.query)
@@ -17,7 +18,7 @@ export default async (req, res) => {
     const locations = await locationService.list(selector, {
         take: validated.limit,
         skip: validated.offset,
-        relations: ["country"],
+        relations: defaultAdminLocationRelations,
     })
 
     res.status(200).json({

@@ -1,5 +1,6 @@
 export type CreateLocationInput = {
     title: string
+    company_id: string
     first_name: string
     last_name: string
     address_1: string

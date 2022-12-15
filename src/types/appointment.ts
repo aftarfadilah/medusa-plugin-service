@@ -27,6 +27,7 @@ export type UpdateAppointmentInput = {
 export type selector = {
     code?: string
     name?: string
+    order_id?: string
     from?: Date
     to?: Date
 }

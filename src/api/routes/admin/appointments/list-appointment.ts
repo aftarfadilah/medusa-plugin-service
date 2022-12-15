@@ -13,6 +13,10 @@ export default async (req, res) => {
         selector.name = validated.name
     }
 
+    if (validated.order_id) {
+        selector.order_id = validated.order_id
+    }
+
     if (validated.code) {
         selector.code = validated.code
     }
@@ -40,6 +44,10 @@ export class AdminGetAppointmentsParams {
     @IsString()
     @IsOptional()
     code?: string
+
+    @IsString()
+    @IsOptional()
+    order_id?: string
 
     @IsDate()
     @IsOptional()

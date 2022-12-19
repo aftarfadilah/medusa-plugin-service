@@ -15,7 +15,7 @@ export default async (req, res) => {
 
     const calendarService: CalendarService = req.scope.resolve("calendarService")
     const [calendars, count] = await calendarService.list(selector, {
-        relations: ["timeperiod"],
+        relations: ["timeperiods"],
     })
 
     res.status(200).json({

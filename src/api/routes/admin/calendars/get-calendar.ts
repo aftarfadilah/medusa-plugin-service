@@ -4,7 +4,7 @@ export default async (req, res) => {
     const { id } = req.params
 
     const calendarService: CalendarService = req.scope.resolve("calendarService")
-    const calendar = await calendarService.retrieve(id, { relations: ["timeperiod"] })
+    const calendar = await calendarService.retrieve(id, { relations: ["timeperiods"] })
 
     res.status(200).json({ calendar })
 }

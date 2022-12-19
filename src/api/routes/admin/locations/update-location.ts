@@ -1,5 +1,5 @@
 import { validator } from "../../../../utils/validator"
-import { IsNotEmpty, IsString, IsObject, IsOptional } from "class-validator"
+import { IsArray, IsString, IsObject, IsOptional } from "class-validator"
 import LocationService from "../../../../services/location"
 import { EntityManager } from "typeorm"
 import { defaultAdminLocationFields, defaultAdminLocationRelations } from "."
@@ -34,6 +34,10 @@ export class AdminPostLocationsLocationReq {
     @IsString()
     @IsOptional()
     company_id: string
+
+    @IsArray()
+    @IsOptional()
+    calendars: string[]
   
     @IsString()
     @IsOptional()

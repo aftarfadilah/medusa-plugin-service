@@ -1,8 +1,10 @@
 import cors from "cors"
 import { Router } from "express"
+import * as bodyParser from "body-parser";
 import authenticateCustomer from "@medusajs/medusa/dist/api/middlewares/authenticate-customer"
 import customerRoutes from "./customers"
 import appointmentRoutes from "./appointments"
+import locationRoutes from "./locations"
 import { getConfigFile } from "medusa-core-utils";
 
 const route = Router()
@@ -18,11 +20,13 @@ export default (app, rootDirectory, config) => {
       credentials: true,
   };
   
+  route.use(bodyParser.json());
   route.use(cors(corsOptions));
   route.use(authenticateCustomer())
 
   customerRoutes(route)
   appointmentRoutes(route)
+  locationRoutes(route)
 
   return app
 }

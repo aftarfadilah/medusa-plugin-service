@@ -8,11 +8,16 @@ import { Location } from '../models/location';
 import { CreateLocationInput, UpdateLocationInput } from '../types/location';
 import { setMetadata } from '@medusajs/medusa/dist/utils';
 import { FindConfig, Selector } from '@medusajs/medusa/dist/types/common';
+import CalendarTimeperiodService from './calendar-timeperiod';
+import CalendarService from './calendar';
+import { addDay, divideTimes, formatDate, subDay, zeroTimes } from '../utils/date-utils';
 
 type InjectedDependencies = {
     manager: EntityManager
     locationRepository: typeof LocationRepository
     eventBusService: EventBusService
+    calendarService: CalendarService
+    calendarTimeperiodService: CalendarTimeperiodService
 }
 
 class LocationService extends TransactionBaseService {
@@ -21,6 +26,8 @@ class LocationService extends TransactionBaseService {
 
     protected readonly locationRepository_: typeof LocationRepository
     protected readonly eventBus_: EventBusService
+    protected readonly calendar_: CalendarService
+    protected readonly calendarTimeperiod_: CalendarTimeperiodService
 
     static readonly IndexName = `locations`
     static readonly Events = {
@@ -29,12 +36,14 @@ class LocationService extends TransactionBaseService {
         DELETED: "location.deleted",
     }
 
-    constructor({ manager, locationRepository, eventBusService }: InjectedDependencies) {
+    constructor({ manager, locationRepository, eventBusService, calendarService, calendarTimeperiodService }: InjectedDependencies) {
         super(arguments[0]);
 
         this.manager_ = manager;
         this.locationRepository_ = locationRepository;
         this.eventBus_ = eventBusService;
+        this.calendar_ = calendarService
+        this.calendarTimeperiod_ = calendarTimeperiodService
     }
 
     async list(
@@ -156,6 +165,63 @@ class LocationService extends TransactionBaseService {
                 })
             return result
         })
+    }
+
+    async getSlotTime(locationId: string, from?: Date, to?: Date, slot_time?: number, use_custom_time?: boolean) {
+        const dateFrom = new Date(from ? from : zeroTimes(new Date())) // zeroTimes set all time to 00:00:00
+        const dateTo = new Date(to ? addDay(to, 1) : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))) // 28 = 4 weeks
+        const availableTimes = []
+
+        // other [note]
+        // work_times [working_hour]
+        // blocked_times [breaktime / blocked / off]
+        
+        const location = await this.retrieve(locationId, {
+            relations: [
+                "company",
+                "calendars"
+            ]
+        })
+
+        // get all connection calendar from location
+        for (const cx of location.calendars) {
+            // select working_time and blocked_time
+            const blockedTimerperiod = await this.calendarTimeperiod_.list({ calendar_id: cx.id, from: { gte: dateFrom, lte: dateTo }, to: { gte: dateFrom, lte: dateTo }, type: ["breaktime", "blocked", "off"] }, { order: { from: "DESC" }})
+            const workingTimerperiod = await this.calendarTimeperiod_.list({ calendar_id: cx.id, from: { gte: dateFrom, lte: dateTo }, to: { gte: dateFrom, lte: dateTo }, type: "working_hour" }, { order: { from: "DESC" }})
+            const workingTimes = []
+            const blockedTimes = []
+            const divideBy = 15
+            
+            // divide into hours by 5 minutes and day as key object
+
+            // working time
+            for (const x of workingTimerperiod) {
+                const getKey = formatDate(x.from)
+                workingTimes[getKey] = divideTimes(x.from, x.to, divideBy)
+            }
+
+            // blocked time
+            for (const x of blockedTimerperiod) {
+                const getKey = formatDate(x.from)
+                if (!blockedTimes[getKey]) blockedTimes[getKey] = []
+                const resultDivide = divideTimes(x.from, x.to, divideBy)
+                resultDivide.map((xx) => blockedTimes[getKey].push(xx))
+            }
+
+            // filter working time with blocked time
+            for (const x in workingTimes) {
+                let pushNow = {
+                    date: x,
+                    slot_times: []
+                }
+                
+                pushNow.slot_times = !blockedTimes[x] ? workingTimes[x] : pushNow.slot_times = workingTimes[x].filter(item => !blockedTimes[x].includes(item))
+                
+                availableTimes.push(pushNow)
+            }
+        }
+        
+        return availableTimes
     }
 }
 

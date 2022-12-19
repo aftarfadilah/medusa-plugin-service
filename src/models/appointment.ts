@@ -4,10 +4,11 @@ import {
     Entity,
     Index,
     JoinColumn,
-    ManyToOne
+    ManyToOne,
+    OneToMany
 } from "typeorm"
 
-import { Order, SoftDeletableEntity } from "@medusajs/medusa";
+import { Order, LineItem, SoftDeletableEntity } from "@medusajs/medusa";
 import { DbAwareColumn } from "@medusajs/medusa/dist/utils/db-aware-column";
 import { generateEntityId,  } from "@medusajs/medusa/dist/utils";
 
@@ -42,6 +43,11 @@ export class Appointment extends SoftDeletableEntity {
   
     @Column({ type: "timestamp with time zone", nullable: true })
     to: Date | null
+
+    @OneToMany(() => LineItem, (lineItem) => lineItem.order, {
+        cascade: ["insert"],
+    })
+    items: LineItem[]
 
     @Column({ type: "varchar", nullable: true })
     order_id: string | null

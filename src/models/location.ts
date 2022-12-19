@@ -4,6 +4,8 @@ import {
     Entity,
     Index,
     JoinColumn,
+    JoinTable,
+    ManyToMany,
     ManyToOne,
 } from "typeorm"
 
@@ -11,6 +13,7 @@ import { Country, SoftDeletableEntity } from "@medusajs/medusa";
 import { DbAwareColumn } from "@medusajs/medusa/dist/utils/db-aware-column";
 import { generateEntityId  } from "@medusajs/medusa/dist/utils";
 import { Company } from "./company";
+import { Calendar } from "./calendar";
   
 @Entity()
 export class Location extends SoftDeletableEntity {
@@ -33,6 +36,20 @@ export class Location extends SoftDeletableEntity {
     @ManyToOne(() => Company)
     @JoinColumn({ name: "company_id" })
     company: Company | null
+
+    @ManyToMany(() => Calendar, { cascade: ["insert"] })
+    @JoinTable({
+        name: "division",
+        joinColumn: {
+            name: "location_id",
+            referencedColumnName: "id",
+        },
+        inverseJoinColumn: {
+            name: "calendar_id",
+            referencedColumnName: "id",
+        },
+    })
+    calendars: Calendar[]
   
     @Column({ type: "varchar", nullable: true })
     address_1: string | null

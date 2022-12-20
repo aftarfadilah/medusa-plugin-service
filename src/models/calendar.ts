@@ -23,7 +23,7 @@ export class Calendar extends SoftDeletableEntity {
 
     @OneToMany(() => CalendarTimeperiod, (ct) => ct.calendar)
     @JoinColumn({ name: "id" })
-    timeperiod: CalendarTimeperiod | null
+    timeperiods: CalendarTimeperiod | null
   
     @DbAwareColumn({ type: "jsonb", nullable: true })
     metadata: Record<string, unknown>

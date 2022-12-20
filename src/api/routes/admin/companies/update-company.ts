@@ -41,8 +41,4 @@ export class AdminPostCompaniesCompanyReq {
     @IsOptional()
     @Type(() => Date)
     work_day_to: Date
-
-    @IsArray()
-    @IsOptional()
-    calendars: string[]
 }

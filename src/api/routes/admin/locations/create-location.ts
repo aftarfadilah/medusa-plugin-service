@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsObject, IsOptional } from "class-validator"
+import { IsArray, IsNotEmpty, IsString, IsObject, IsOptional } from "class-validator"
 
 import LocationService from "../../../../services/location";
 import { validator } from "../../../../utils/validator"
@@ -23,7 +23,11 @@ export class AdminPostLocationsReq {
 
     @IsString()
     company_id: string
-  
+
+    @IsArray()
+    @IsOptional()
+    calendars: string[]
+
     @IsString()
     first_name: string
 

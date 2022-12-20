@@ -16,7 +16,7 @@ export default (app, rootDirectory, config) => {
   const { projectConfig } = configModule;
 
   const corsOptions = {
-      origin: projectConfig.admin_cors.split(","),
+      origin: projectConfig.store_cors.split(","),
       credentials: true,
   };
   

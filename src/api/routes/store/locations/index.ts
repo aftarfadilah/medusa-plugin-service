@@ -10,7 +10,7 @@ export default (app) => {
   // Authenticated endpoints
   route.use(requireCustomerAuthentication())
   
-  route.get("/get-slot-time/:id", middlewares.wrap(require("./get-slot-time-location").default))
+  route.get("/:id/get-slot-time", middlewares.wrap(require("./get-slot-time-location").default))
 
   return app
 }

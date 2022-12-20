@@ -11,6 +11,7 @@ import { FindConfig, Selector } from '@medusajs/medusa/dist/types/common';
 import CalendarTimeperiodService from './calendar-timeperiod';
 import CalendarService from './calendar';
 import { addDay, divideTimes, formatDate, subDay, zeroTimes } from '../utils/date-utils';
+import { union } from "lodash"
 
 type InjectedDependencies = {
     manager: EntityManager
@@ -171,6 +172,9 @@ class LocationService extends TransactionBaseService {
         const dateFrom = new Date(from ? from : zeroTimes(new Date())) // zeroTimes set all time to 00:00:00
         const dateTo = new Date(to ? addDay(to, 1) : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))) // 28 = 4 weeks
         const availableTimes = []
+        const workingTimes = []
+        const blockedTimes = []
+        const divideBy = 5 // 5 minutes
 
         const { calendar_id } = config
 
@@ -188,21 +192,19 @@ class LocationService extends TransactionBaseService {
         // filter calendars with selection one if calendar_id not null
         if (calendar_id) location.calendars = location.calendars.filter((item) => item.id == calendar_id)
 
-        // get all connection calendar from location
+        // get all connection calendar from location and collection blocked and working times
         for (const cx of location.calendars) {
             // select working_time and blocked_time
             const blockedTimerperiod = await this.calendarTimeperiod_.list({ calendar_id: cx.id, from: { gte: dateFrom, lte: dateTo }, to: { gte: dateFrom, lte: dateTo }, type: ["breaktime", "blocked", "off"] }, { order: { from: "DESC" }})
             const workingTimerperiod = await this.calendarTimeperiod_.list({ calendar_id: cx.id, from: { gte: dateFrom, lte: dateTo }, to: { gte: dateFrom, lte: dateTo }, type: "working_hour" }, { order: { from: "DESC" }})
-            const workingTimes = []
-            const blockedTimes = []
-            const divideBy = 5 // 5 minutes
             
             // divide into hours by 5 minutes and day as key object
 
             // working time
             for (const x of workingTimerperiod) {
                 const getKey = formatDate(x.from)
-                workingTimes[getKey] = divideTimes(x.from, x.to, divideBy)
+                const resultDivide = divideTimes(x.from, x.to, divideBy)
+                workingTimes[getKey] = union(workingTimes[getKey], resultDivide)
             }
 
             // blocked time
@@ -210,20 +212,20 @@ class LocationService extends TransactionBaseService {
                 const getKey = formatDate(x.from)
                 if (!blockedTimes[getKey]) blockedTimes[getKey] = []
                 const resultDivide = divideTimes(x.from, x.to, divideBy)
-                resultDivide.map((xx) => blockedTimes[getKey].push(xx))
+                blockedTimes[getKey] = union(blockedTimes[getKey], resultDivide)
             }
+        }
 
-            // filter working time with blocked time
-            for (const x in workingTimes) {
-                let pushNow = {
-                    date: x,
-                    slot_times: []
-                }
-                
-                pushNow.slot_times = !blockedTimes[x] ? workingTimes[x] : pushNow.slot_times = workingTimes[x].filter(item => !blockedTimes[x].includes(item))
-                
-                availableTimes.push(pushNow)
+        // filter working time with blocked time
+        for (const x in workingTimes) {
+            let pushNow = {
+                date: x,
+                slot_times: []
             }
+            
+            pushNow.slot_times = !blockedTimes[x] ? workingTimes[x] : pushNow.slot_times = workingTimes[x].filter(item => !blockedTimes[x].includes(item))
+            
+            availableTimes.push(pushNow)
         }
         
         return availableTimes

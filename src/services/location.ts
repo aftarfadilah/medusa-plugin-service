@@ -167,10 +167,12 @@ class LocationService extends TransactionBaseService {
         })
     }
 
-    async getSlotTime(locationId: string, from?: Date, to?: Date, slot_time?: number, use_custom_time?: boolean) {
+    async getSlotTime(locationId: string, from?: Date, to?: Date, config?: Record<string, any>) {
         const dateFrom = new Date(from ? from : zeroTimes(new Date())) // zeroTimes set all time to 00:00:00
         const dateTo = new Date(to ? addDay(to, 1) : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))) // 28 = 4 weeks
         const availableTimes = []
+
+        const { calendar_id } = config
 
         // other [note]
         // work_times [working_hour]
@@ -182,6 +184,9 @@ class LocationService extends TransactionBaseService {
                 "calendars"
             ]
         })
+
+        // filter calendars with selection one if calendar_id not null
+        if (calendar_id) location.calendars = location.calendars.filter((item) => item.id == calendar_id)
 
         // get all connection calendar from location
         for (const cx of location.calendars) {

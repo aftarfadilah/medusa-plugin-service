@@ -1,24 +1,17 @@
 import { validator } from "../../../../utils/validator"
 import AppointmentService from "../../../../services/appointment"
 import { selector } from "../../../../types/appointment"
-import { IsDate, IsOptional, IsString, IsNumber } from "class-validator"
+import { IsOptional, IsNumber } from "class-validator"
 import { Type } from "class-transformer"
 
 export default async (req, res) => {
-    const validated = await validator(AdminGetAppointmentsParams, req.query)
+    const { id }  = req.params
+    const validated = await validator(AdminGetCustoemrOrdersAppointmentParams, req.query)
 
     const selector: selector = {}
 
-    if (validated.name) {
-        selector.name = validated.name
-    }
-
-    if (validated.order_id) {
-        selector.order_id = validated.order_id
-    }
-
-    if (validated.code) {
-        selector.code = validated.code
+    if (id) {
+        selector.order_id = id
     }
 
     const appointmentService: AppointmentService = req.scope.resolve("appointmentService")
@@ -36,29 +29,7 @@ export default async (req, res) => {
     })
 }
 
-export class AdminGetAppointmentsParams {
-    @IsString()
-    @IsOptional()
-    name?: string
-
-    @IsString()
-    @IsOptional()
-    code?: string
-
-    @IsString()
-    @IsOptional()
-    order_id?: string
-
-    @IsDate()
-    @IsOptional()
-    @Type(() => Date)
-    from: Date
-  
-    @IsDate()
-    @IsOptional()
-    @Type(() => Date)
-    to: Date
-
+export class AdminGetCustoemrOrdersAppointmentParams {
     @IsNumber()
     @IsOptional()
     @Type(() => Number)

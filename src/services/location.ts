@@ -190,7 +190,7 @@ class LocationService extends TransactionBaseService {
             const workingTimerperiod = await this.calendarTimeperiod_.list({ calendar_id: cx.id, from: { gte: dateFrom, lte: dateTo }, to: { gte: dateFrom, lte: dateTo }, type: "working_hour" }, { order: { from: "DESC" }})
             const workingTimes = []
             const blockedTimes = []
-            const divideBy = 15
+            const divideBy = 5 // 5 minutes
             
             // divide into hours by 5 minutes and day as key object
 

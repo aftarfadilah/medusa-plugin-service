@@ -75,6 +75,12 @@ export class Location extends SoftDeletableEntity {
   
     @Column({ type: "varchar", nullable: true })
     phone: string | null
+
+    @Column({ type: "varchar", nullable: true })
+    longitude: string | null
+
+    @Column({ type: "varchar", nullable: true })
+    latitude: string | null
   
     @DbAwareColumn({ type: "jsonb", nullable: true })
     metadata: Record<string, unknown>

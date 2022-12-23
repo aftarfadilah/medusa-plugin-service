@@ -37,7 +37,7 @@ export class Location extends SoftDeletableEntity {
     @JoinColumn({ name: "company_id" })
     company: Company | null
 
-    @ManyToMany(() => Calendar, { cascade: ["insert"] })
+    @ManyToMany(() => Calendar, {})
     @JoinTable({
         name: "division",
         joinColumn: {

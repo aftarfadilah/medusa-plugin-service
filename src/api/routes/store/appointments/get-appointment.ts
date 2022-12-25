@@ -1,6 +1,7 @@
 import AppointmentService from "../../../../services/appointment"
 
 export default async (req, res) => {
+
     const { id } = req.params
     const cus_id: string | undefined = req.user?.customer_id
 

@@ -204,17 +204,38 @@ class AppointmentService extends TransactionBaseService {
 
                 if(isRightDivision){
 
-                    const appointment_ =  await this.retrieve(appointment.id, {
-                        relations: ["order"]
-                    });
+                    return appointment;
 
-                    appointment_.order = await this.order_.retrieve(appointment_.order.id, {relations: ["items"]})
-
-                    return appointment_;
+                    // const appointment_ =  await this.retrieve(appointment.id, {
+                    //     relations: ["order"]
+                    // });
+                    //
+                    // appointment_.order = await this.order_.retrieve(appointment_.order.id, {relations: ["items"]})
                 }
             }
 
         }
+
+    }
+
+    checkIfCurrent(appointment:Appointment, hourRange:number) {
+
+        const {from,to} = appointment;
+        const now = new Date().getTime();
+
+        const range = hourRange * 1000 * 60 * 60;
+
+        const minTime = from.getTime() - range;
+        const maxTime = to.getTime() + range;
+
+        if(now < minTime )
+          return false;
+
+        if(now > maxTime)
+          return false;
+
+        return true;
+
 
     }
 

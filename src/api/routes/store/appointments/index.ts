@@ -12,6 +12,10 @@ export default (app) => {
       middlewares.wrap(require("./get-current").default)
   );
 
+  route.get(
+      "/current-detailed",
+      middlewares.wrap(require("./get-current-detailed").default)
+  );
 
   // Authenticated endpoints
   route.use(requireCustomerAuthentication());

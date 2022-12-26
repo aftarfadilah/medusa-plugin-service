@@ -1,5 +1,5 @@
 import AppointmentService from "../../../../services/appointment"
-import { IsString } from "class-validator"
+import { IsString, IsDateString } from "class-validator"
 import { validator } from "@medusajs/medusa/dist/utils/validator"
 import CalendarTimeperiodService from "../../../../services/calendar-timeperiod"
 import CalendarService from "../../../../services/calendar"
@@ -30,8 +30,8 @@ export default async (req, res) => {
         calendar_id: validated.calendar_id,
         title: `Appointment for ${appointment.order_id}`,
         type: "blocked",
-        from: new Date(),
-        to: new Date(),
+        from: new Date(validated.slot_time),
+        to: new Date(validated.slot_time), // Todo To is Result Calculate time with `From` plus All Total duration_min Order Items
         metadata: {
             appointment_id: appointment.id
         }
@@ -54,4 +54,7 @@ export class StorePutMakeAppointmentReq {
 
     @IsString()
     calendar_id: string
+
+    @IsDateString()
+    slot_time: Date
 }

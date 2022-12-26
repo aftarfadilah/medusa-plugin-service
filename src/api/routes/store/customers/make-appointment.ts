@@ -3,6 +3,7 @@ import { IsString, IsDateString } from "class-validator"
 import { validator } from "@medusajs/medusa/dist/utils/validator"
 import CalendarTimeperiodService from "../../../../services/calendar-timeperiod"
 import CalendarService from "../../../../services/calendar"
+import LocationService from "../../../../services/location"
 import { AppointmentStatus } from "../../../../models/appointment"
 import { MedusaError } from "medusa-core-utils"
 
@@ -14,10 +15,12 @@ export default async (req, res) => {
     const appointmentService: AppointmentService = req.scope.resolve("appointmentService")
     const calendarService: CalendarService = req.scope.resolve("calendarService")
     const calendarTimeperiodService: CalendarTimeperiodService = req.scope.resolve("calendarTimeperiodService")
+    const locationService: LocationService = req.scope.resolve("locationService")
     
     const appointment = await appointmentService.retrieve(id, { relations: ["order"] })
     
     // check if it's their own appointment
+
     if (appointment.order.customer_id != cus_id) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Appointment not valid!", "400")
     
     // if payment already scheduled customer can't change it
@@ -48,6 +51,7 @@ export default async (req, res) => {
 
     const get_appointment = await appointmentService.retrieve(id, { relations: ["order"] })
     res.status(200).json({ appointment: get_appointment })
+
 }
 
 export class StorePutMakeAppointmentReq {

@@ -34,10 +34,6 @@ export class AdminPostLocationsLocationReq {
     @IsString()
     @IsOptional()
     company_id: string
-
-    @IsArray()
-    @IsOptional()
-    calendars: string[]
   
     @IsString()
     @IsOptional()

@@ -39,6 +39,8 @@ export default async (req, res) => {
 
     await appointmentService.update(id, {
         status: AppointmentStatus.SCHEDULED,
+        from: new Date(validated.slot_time),
+        to: new Date(validated.slot_time), // Todo To is Result Calculate time with `From` plus All Total duration_min Order Items
         metadata: {
             calendar_timeperiod_id: timeperiod.id
         }

@@ -30,7 +30,7 @@ export class Appointment extends SoftDeletableEntity {
     status: AppointmentStatus
 
     @Column({ type: "varchar", nullable: true })
-    location: string | null
+    display_id: string | null
 
     @Column({ type: "timestamp with time zone", nullable: true })
     notified_via_email_at: Date | null

@@ -26,7 +26,7 @@ export const defaultAdminAppointmentRelations = []
 export const defaultAdminAppointmentFields: (keyof Appointment)[] = [
     "id",
     "status",
-    "location",
+    "display_id",
     "notified_via_email_at",
     "notified_via_sms_at",
     "from",

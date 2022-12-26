@@ -3,6 +3,8 @@ import { IsString } from "class-validator"
 import { validator } from "@medusajs/medusa/dist/utils/validator"
 import CalendarTimeperiodService from "../../../../services/calendar-timeperiod"
 import CalendarService from "../../../../services/calendar"
+import { AppointmentStatus } from "../../../../models/appointment"
+import { MedusaError } from "medusa-core-utils"
 
 export default async (req, res) => {
     const { id } = req.params
@@ -16,32 +18,34 @@ export default async (req, res) => {
     const appointment = await appointmentService.retrieve(id, { relations: ["order"] })
     
     // check if it's their own appointment
-    if (appointment.order.customer_id == cus_id) {
-        const calendar = await calendarService.retrieve(validated.calendar_id, {}) // check calendar exists or not
+    if (appointment.order.customer_id != cus_id) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Appointment not valid!", "400")
+    
+    // if payment already scheduled customer can't change it
+    if (appointment.status == AppointmentStatus.SCHEDULED) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Appointment already Scheduled!", "400")
 
-        // create timeperiod
-        const timeperiod = await calendarTimeperiodService.create({
-            calendar_id: validated.calendar_id,
-            title: `Appointment for ${appointment.order_id}`,
-            type: "blocked",
-            from: new Date(),
-            to: new Date(),
-            metadata: {
-                appointment_id: appointment.id
-            }
-        })
+    const calendar = await calendarService.retrieve(validated.calendar_id, {}) // check calendar exists or not
 
-        await appointmentService.update(id, {
-            metadata: {
-                calendar_timeperiod_id: timeperiod.id
-            }
-        })
+    // create timeperiod
+    const timeperiod = await calendarTimeperiodService.create({
+        calendar_id: validated.calendar_id,
+        title: `Appointment for ${appointment.order_id}`,
+        type: "blocked",
+        from: new Date(),
+        to: new Date(),
+        metadata: {
+            appointment_id: appointment.id
+        }
+    })
 
-        const get_appointment = await appointmentService.retrieve(id, { relations: ["order"] })
-        res.status(200).json({ appointment: get_appointment })
-    } else {
-        res.status(404).json({"message": "Appointment not valid!"})
-    }
+    await appointmentService.update(id, {
+        status: AppointmentStatus.SCHEDULED,
+        metadata: {
+            calendar_timeperiod_id: timeperiod.id
+        }
+    })
+
+    const get_appointment = await appointmentService.retrieve(id, { relations: ["order"] })
+    res.status(200).json({ appointment: get_appointment })
 }
 
 export class StorePutMakeAppointmentReq {

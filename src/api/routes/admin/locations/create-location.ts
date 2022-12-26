@@ -56,6 +56,14 @@ export class AdminPostLocationsReq {
     @IsString()
     phone: string
 
+    @IsString()
+    @IsOptional()
+    longitude: string
+
+    @IsString()
+    @IsOptional()
+    latitude: string
+
     @IsObject()
     @IsOptional()
     metadata?: Record<string, unknown>

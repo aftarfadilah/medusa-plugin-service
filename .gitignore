@@ -22,3 +22,4 @@ yarn.lock
 /types/
 /index.js
 .idea/
+/dist/

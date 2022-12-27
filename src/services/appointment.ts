@@ -1,17 +1,23 @@
-import { EventBusService, TransactionBaseService } from '@medusajs/medusa';
+import { EventBusService, LineItem, TransactionBaseService } from '@medusajs/medusa';
 import { formatException } from '@medusajs/medusa/dist/utils/exception-formatter';
 import { buildQuery } from '@medusajs/medusa/dist/utils/build-query';
 import { MedusaError } from "medusa-core-utils"
 import { EntityManager } from "typeorm"
 import { AppointmentRepository } from "../repositories/appointment";
-import { Appointment } from '../models/appointment';
+import { Appointment, AppointmentStatus } from '../models/appointment';
 import { CreateAppointmentInput, UpdateAppointmentInput } from '../types/appointment';
 import { setMetadata } from '@medusajs/medusa/dist/utils';
 import { FindConfig, Selector } from '@medusajs/medusa/dist/types/common';
+import CalendarService from './calendar';
+import CalendarTimeperiodService from './calendar-timeperiod';
+import LocationService from './location';
 
 type InjectedDependencies = {
     manager: EntityManager
     appointmentRepository: typeof AppointmentRepository
+    calendarService: CalendarService
+    calendarTimeperiodService: CalendarTimeperiodService
+    locationService: LocationService
     eventBusService: EventBusService
 }
 
@@ -21,6 +27,9 @@ class AppointmentService extends TransactionBaseService {
 
     protected readonly appointmentRepository_: typeof AppointmentRepository
     protected readonly eventBus_: EventBusService
+    protected readonly calendar_: CalendarService
+    protected readonly calendarTimeperiod_: CalendarTimeperiodService
+    protected readonly location_: LocationService
 
     static readonly IndexName = `appointments`
     static readonly Events = {
@@ -29,12 +38,15 @@ class AppointmentService extends TransactionBaseService {
         DELETED: "appointment.deleted",
     }
 
-    constructor({ manager, appointmentRepository, eventBusService }: InjectedDependencies) {
+    constructor({ manager, appointmentRepository, eventBusService, calendarService, calendarTimeperiodService, locationService }: InjectedDependencies) {
         super(arguments[0]);
 
-        this.manager_ = manager;
-        this.appointmentRepository_ = appointmentRepository;
-        this.eventBus_ = eventBusService;
+        this.manager_ = manager
+        this.appointmentRepository_ = appointmentRepository
+        this.eventBus_ = eventBusService
+        this.calendar_ = calendarService
+        this.calendarTimeperiod_ = calendarTimeperiodService
+        this.location_ = locationService
     }
 
     async list(
@@ -159,6 +171,79 @@ class AppointmentService extends TransactionBaseService {
                 })
             return result
         })
+    }
+
+    async makeAppointment(makeAppointmentInput: { order_id: string, location_id: string, calendar_id: string, slot_time: Date, appointment_id?: string }) {
+        const { order_id, location_id, calendar_id, slot_time, appointment_id } = makeAppointmentInput
+
+        const dataInput = {
+            display_id: "0",
+            order_id: order_id,
+            is_confirmed: false,
+            status: AppointmentStatus.DRAFT
+        }
+
+        await this.calendar_.retrieve(calendar_id, {}) // check calendar exists or not
+
+        let appointment: Appointment
+        
+        if (appointment_id) appointment = await this.retrieve(appointment_id, { relations: ["order", "order.items"] })
+        
+        if (!appointment) {
+            const ap = await this.create(dataInput)
+            appointment = await this.retrieve(ap.id, { relations: ["order", "order.items"] })
+        }
+        
+        // // if payment already scheduled customer can't change it
+        if (appointment.status == AppointmentStatus.SCHEDULED) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Appointment already Scheduled!", "400")
+
+        const location = this.location_.retrieve(location_id, { relations: ["country", "company"] })
+
+        // calculated duration_min on product general or variant
+        const items_list: LineItem[] = appointment.order.items
+        let totalDurationMin: number = 0
+        
+        for (const x of items_list) {
+            let duration_min:number = 0
+            const variant_time: string = x.variant.metadata?.duration_min as string
+            const product_time: string = x.variant.product.metadata?.duration_min as string
+
+            if (+variant_time > 0) {
+                duration_min = +variant_time
+            } else {
+                duration_min = +product_time
+            }
+
+            totalDurationMin += duration_min
+        }
+
+        // calculated slot_time + duration_min items
+        const slot_time_until = new Date(slot_time).getTime() + (totalDurationMin * 60 * 1000)
+
+        // create timeperiod
+        const timeperiod = await this.calendarTimeperiod_.create({
+            calendar_id: calendar_id,
+            title: `Appointment for ${appointment.order_id}`,
+            type: "blocked",
+            from: new Date(slot_time).toISOString(),
+            to: new Date(slot_time_until).toISOString(),
+            metadata: {
+                appointment_id: appointment.id
+            }
+        })
+
+        // update status to scheduled
+        await this.update(appointment.id, {
+            status: AppointmentStatus.SCHEDULED,
+            from: new Date(slot_time),
+            to: new Date(slot_time_until),
+            metadata: {
+                calendar_timeperiod_id: timeperiod.id,
+                location: location
+            }
+        })
+
+        return await this.retrieve(appointment.id, { relations: ["order", "order.items"] })
     }
 }
 

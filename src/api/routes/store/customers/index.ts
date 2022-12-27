@@ -30,7 +30,7 @@ export default (app) => {
   
   route.get("/me/orders/:id/appointments", middlewares.wrap(require("./get-orders-appointments").default))
   
-  route.put("/make-appointment/:id", middlewares.wrap(require("./make-appointment").default))
+  route.post("/make-appointment", middlewares.wrap(require("./make-appointment").default))
 
   return app
 }

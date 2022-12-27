@@ -4,19 +4,19 @@ import {
     Entity,
     Index,
     JoinColumn,
-    OneToMany,
-    OneToOne
+    OneToOne,
+    PrimaryColumn
 } from "typeorm"
 
-import { SoftDeletableEntity } from "@medusajs/medusa";
-import { DbAwareColumn } from "@medusajs/medusa/dist/utils/db-aware-column";
 import { generateEntityId } from "@medusajs/medusa/dist/utils/generate-entity-id";
-import { CalendarTimeperiod } from "./calendar-timeperiod";
 import { Calendar } from "./calendar";
 import { Location } from "./location";
   
 @Entity()
-export class Division extends SoftDeletableEntity {
+export class Division {
+    @PrimaryColumn()
+    id: string
+
     @Index()
     @Column({ type: "varchar", nullable: false })
     location_id: string

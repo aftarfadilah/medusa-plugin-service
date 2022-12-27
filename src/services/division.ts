@@ -121,8 +121,9 @@ class DivisionService extends TransactionBaseService {
             if (!division) {
                 return
             }
-
-            await divisionRepo.softRemove(division)
+            
+            await divisionRepo.delete(division.id) //delete permanent so we can do join calendar in model easly
+            //await divisionRepo.softRemove(division)
 
             await this.eventBus_
                 .withTransaction(manager)

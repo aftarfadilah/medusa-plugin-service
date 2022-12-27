@@ -173,8 +173,22 @@ class AppointmentService extends TransactionBaseService {
         })
     }
 
-    async makeAppointment(makeAppointmentInput: { order_id: string, location_id: string, calendar_id: string, slot_time: Date, appointment_id?: string }) {
-        const { order_id, location_id, calendar_id, slot_time, appointment_id } = makeAppointmentInput
+    async isOrderHaveAppointment(orderId: string) {
+        const [appointment, count] = await this.list({ order_id: orderId })
+        let realCount = 0
+        for (const x of appointment) {
+            if (x.status == AppointmentStatus.SCHEDULED) realCount += 1
+        }
+        if (realCount > 0) return true
+        return false
+    }
+
+    async makeAppointment(makeAppointmentInput: { order_id: string, location_id: string, calendar_id: string, slot_time: Date }) {
+        const { order_id, location_id, calendar_id, slot_time } = makeAppointmentInput
+
+        const isOrderHaveAppointment = await this.isOrderHaveAppointment(order_id)
+        
+        if (isOrderHaveAppointment) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Order Already Have Appointment !", "400")
 
         const dataInput = {
             display_id: "0",
@@ -185,14 +199,8 @@ class AppointmentService extends TransactionBaseService {
 
         await this.calendar_.retrieve(calendar_id, {}) // check calendar exists or not
 
-        let appointment: Appointment
-        
-        if (appointment_id) appointment = await this.retrieve(appointment_id, { relations: ["order", "order.items"] })
-        
-        if (!appointment) {
-            const ap = await this.create(dataInput)
-            appointment = await this.retrieve(ap.id, { relations: ["order", "order.items"] })
-        }
+        const ap = await this.create(dataInput)
+        const appointment: Appointment = await this.retrieve(ap.id, { relations: ["order", "order.items"] })
         
         // // if payment already scheduled customer can't change it
         if (appointment.status == AppointmentStatus.SCHEDULED) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Appointment already Scheduled!", "400")

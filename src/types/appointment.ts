@@ -1,7 +1,7 @@
 import { AppointmentStatus } from "../models/appointment"
 
 export type CreateAppointmentInput = {
-    location: string
+    display_id?: string
     notified_via_email_at?: Date | null
     notified_via_sms_at?: Date | null
     from?: Date | null
@@ -13,7 +13,7 @@ export type CreateAppointmentInput = {
 }
 
 export type UpdateAppointmentInput = {
-    location?: string
+    display_id?: string
     notified_via_email_at?: Date | null
     notified_via_sms_at?: Date | null
     from?: Date | null

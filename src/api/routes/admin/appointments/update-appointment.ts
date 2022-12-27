@@ -37,7 +37,7 @@ export class AdminPostAppointmentsAppointmentReq {
 
     @IsString()
     @IsOptional()
-    location?: string
+    display_id?: string
 
     @IsDate()
     @IsOptional()

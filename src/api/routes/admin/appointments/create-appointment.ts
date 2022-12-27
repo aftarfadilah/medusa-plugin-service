@@ -24,7 +24,7 @@ export class AdminPostAppointmentsReq {
     status: AppointmentStatus = AppointmentStatus.DRAFT
 
     @IsString()
-    location: string
+    display_id: string
 
     @IsDate()
     @IsOptional()

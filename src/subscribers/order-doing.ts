@@ -3,6 +3,7 @@ import AppointmentService from "../services/appointment";
 import { PostMakeAppointmentReq } from "../api/routes/store/customers/make-appointment"
 import { validator } from "../utils/validator"
 import { EventBusService, OrderService } from "@medusajs/medusa";
+import { MedusaError } from "medusa-core-utils";
 
 type InjectedDependencies = { 
     manager: EntityManager;
@@ -28,11 +29,14 @@ class OrderDoingSubscriber {
             let isMakeAppointment = false
 
             // check if make appoinment during checkout
-            if (order.cart.context?.is_make_appointment) isMakeAppointment = true
+            if (order.cart.context?.is_make_appointment == true) isMakeAppointment = true
 
             if (isMakeAppointment) {
                 // @ts-ignore
                 const { location_id, slot_time, calendar_id } = order.cart.context.data_make_appointment
+
+                if (!location_id || !slot_time || !calendar_id) throw new MedusaError(MedusaError.Types.INVALID_DATA, "location_id, calendar_id or slot_time not filled, create appointment failed.", "400")
+
                 const dataInput = {
                     order_id: id,
                     location_id: location_id,

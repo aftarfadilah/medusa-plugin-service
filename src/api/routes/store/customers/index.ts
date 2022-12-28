@@ -14,12 +14,12 @@ import { StoreGetCustomersCustomerOrdersParams } from "@medusajs/medusa/dist/api
 const route = Router()
 
 export default (app) => {
-  app.use("/customers", route)
+  app.use("/customers/me", route)
 
   // Authenticated endpoints
   route.use(requireCustomerAuthentication())
   route.get(
-    "/me/orders/appointments",
+    "/orders/appointments",
     transformQuery(StoreGetCustomersCustomerOrdersParams, {
       defaultFields: defaultStoreOrdersFields,
       defaultRelations: defaultStoreOrdersRelations,
@@ -28,7 +28,7 @@ export default (app) => {
     middlewares.wrap(require("./list-orders-with-appointments").default)
   )
   
-  route.get("/me/orders/:id/appointments", middlewares.wrap(require("./get-orders-appointments").default))
+  route.get("/orders/:id/appointments", middlewares.wrap(require("./get-orders-appointments").default))
   
   route.post("/make-appointment", middlewares.wrap(require("./make-appointment").default))
 

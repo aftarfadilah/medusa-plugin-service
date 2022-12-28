@@ -5,6 +5,7 @@ import authenticateCustomer from "@medusajs/medusa/dist/api/middlewares/authenti
 import customerRoutes from "./customers"
 import appointmentRoutes from "./appointments"
 import locationRoutes from "./locations"
+import divisionRoutes from "./divisions"
 import { getConfigFile } from "medusa-core-utils";
 
 const route = Router()
@@ -27,6 +28,7 @@ export default (app, rootDirectory, config) => {
   customerRoutes(route)
   appointmentRoutes(route)
   locationRoutes(route)
+  divisionRoutes(route)
 
   return app
 }

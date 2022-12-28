@@ -13,6 +13,8 @@ export default (app) => {
   
   route.get("/", middlewares.wrap(require("./list-location").default))
 
+  route.get("/:id", middlewares.wrap(require("./get-location").default))
+
   route.get("/:id/get-slot-time", middlewares.wrap(require("./get-slot-time-location").default))
 
   return app
@@ -48,3 +50,4 @@ export const defaultStoreLocationFields: (keyof Location)[] = [
 
 export * from "./get-slot-time-location"
 export * from "./list-location"
+export * from "./get-location"

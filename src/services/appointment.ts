@@ -191,7 +191,6 @@ class AppointmentService extends TransactionBaseService {
         if (isOrderHaveAppointment) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Order Already Have Appointment !", "400")
 
         const dataInput = {
-            display_id: "0",
             order_id: order_id,
             is_confirmed: false,
             status: AppointmentStatus.DRAFT

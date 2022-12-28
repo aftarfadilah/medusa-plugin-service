@@ -4,19 +4,16 @@ import {
     Entity,
     Index,
     JoinColumn,
-    OneToOne,
-    PrimaryColumn
+    OneToOne
 } from "typeorm"
 
 import { generateEntityId } from "@medusajs/medusa/dist/utils/generate-entity-id";
 import { Calendar } from "./calendar";
 import { Location } from "./location";
+import { BaseEntity } from "@medusajs/medusa";
   
 @Entity()
-export class Division {
-    @PrimaryColumn()
-    id: string
-
+export class Division extends BaseEntity {
     @Index()
     @Column({ type: "varchar", nullable: false })
     location_id: string

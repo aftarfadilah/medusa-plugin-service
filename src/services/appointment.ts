@@ -1,4 +1,4 @@
-import { EventBusService, LineItem, TransactionBaseService } from '@medusajs/medusa';
+import { EventBusService, LineItem, OrderService, TransactionBaseService } from '@medusajs/medusa';
 import { formatException } from '@medusajs/medusa/dist/utils/exception-formatter';
 import { buildQuery } from '@medusajs/medusa/dist/utils/build-query';
 import { MedusaError } from "medusa-core-utils"
@@ -11,6 +11,8 @@ import { FindConfig, Selector } from '@medusajs/medusa/dist/types/common';
 import CalendarService from './calendar';
 import CalendarTimeperiodService from './calendar-timeperiod';
 import LocationService from './location';
+import { divideTimes } from '../utils/date-utils';
+import { includes } from "lodash"
 
 type InjectedDependencies = {
     manager: EntityManager
@@ -18,6 +20,7 @@ type InjectedDependencies = {
     calendarService: CalendarService
     calendarTimeperiodService: CalendarTimeperiodService
     locationService: LocationService
+    orderService: OrderService
     eventBusService: EventBusService
 }
 
@@ -30,6 +33,7 @@ class AppointmentService extends TransactionBaseService {
     protected readonly calendar_: CalendarService
     protected readonly calendarTimeperiod_: CalendarTimeperiodService
     protected readonly location_: LocationService
+    protected readonly order_: OrderService
 
     static readonly IndexName = `appointments`
     static readonly Events = {
@@ -38,7 +42,7 @@ class AppointmentService extends TransactionBaseService {
         DELETED: "appointment.deleted",
     }
 
-    constructor({ manager, appointmentRepository, eventBusService, calendarService, calendarTimeperiodService, locationService }: InjectedDependencies) {
+    constructor({ manager, appointmentRepository, eventBusService, calendarService, calendarTimeperiodService, locationService, orderService }: InjectedDependencies) {
         super(arguments[0]);
 
         this.manager_ = manager
@@ -47,6 +51,7 @@ class AppointmentService extends TransactionBaseService {
         this.calendar_ = calendarService
         this.calendarTimeperiod_ = calendarTimeperiodService
         this.location_ = locationService
+        this.order_ = orderService
     }
 
     async list(
@@ -183,31 +188,37 @@ class AppointmentService extends TransactionBaseService {
         return false
     }
 
+    // calculate from and to appointment into slot time and check with available slot time
+    isSlotTimeAvailable(from: Date, to: Date, slot_time) {
+        const divideBy = 5
+        const resultDivide = divideTimes(new Date(from), new Date(to), divideBy)
+        for (const x in resultDivide) {
+            const st = slot_time.filter((xx) => xx.date == x)
+            const stl = st[0].slot_times
+            for (const xx of resultDivide[x]) {
+                if (includes(stl, xx)) continue
+                return false
+            }
+        }
+        
+        return true
+    }
+
     async makeAppointment(makeAppointmentInput: { order_id: string, location_id: string, calendar_id: string, slot_time: Date }) {
         const { order_id, location_id, calendar_id, slot_time } = makeAppointmentInput
 
+        // check calendar exists or not
+        await this.calendar_.retrieve(calendar_id, {})
+
+        // check if order already have appointment
         const isOrderHaveAppointment = await this.isOrderHaveAppointment(order_id)
-        
         if (isOrderHaveAppointment) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Order Already Have Appointment !", "400")
 
-        const dataInput = {
-            order_id: order_id,
-            is_confirmed: false,
-            status: AppointmentStatus.DRAFT
-        }
-
-        await this.calendar_.retrieve(calendar_id, {}) // check calendar exists or not
-
-        const ap = await this.create(dataInput)
-        const appointment: Appointment = await this.retrieve(ap.id, { relations: ["order", "order.items"] })
-        
-        // // if payment already scheduled customer can't change it
-        if (appointment.status == AppointmentStatus.SCHEDULED) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Appointment already Scheduled!", "400")
-
-        const location = this.location_.retrieve(location_id, { relations: ["country", "company"] })
+        const location = await this.location_.retrieve(location_id, { relations: ["country", "company"] })
+        const order = await this.order_.retrieve(order_id, { relations: ["items"] })
 
         // calculated duration_min on product general or variant
-        const items_list: LineItem[] = appointment.order.items
+        const items_list: LineItem[] = order.items
         let totalDurationMin: number = 0
         
         for (const x of items_list) {
@@ -225,15 +236,31 @@ class AppointmentService extends TransactionBaseService {
         }
 
         // calculated slot_time + duration_min items
-        const slot_time_until = new Date(slot_time).getTime() + (totalDurationMin * 60 * 1000)
+        const slot_time_until = new Date(new Date(slot_time).getTime() + (totalDurationMin * 60 * 1000))
+        
+        // get slot time
+        const today_time_slot = await this.location_.getSlotTime(location_id, slot_time, slot_time_until, { calendar_id: calendar_id })
+        
+        // is slot time available
+        const isSlotTimeAvailable = this.isSlotTimeAvailable(slot_time, slot_time_until, today_time_slot)
+        if (!isSlotTimeAvailable) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Slot Time Not Available!", "404")
 
+        const dataInput = {
+            order_id: order_id,
+            is_confirmed: false,
+            status: AppointmentStatus.DRAFT
+        }
+
+        const ap = await this.create(dataInput)
+        const appointment: Appointment = await this.retrieve(ap.id, { relations: ["order", "order.items"] })
+        
         // create timeperiod
         const timeperiod = await this.calendarTimeperiod_.create({
             calendar_id: calendar_id,
             title: `Appointment for ${appointment.order_id}`,
             type: "blocked",
-            from: new Date(slot_time).toISOString(),
-            to: new Date(slot_time_until).toISOString(),
+            from: new Date(slot_time),
+            to: new Date(slot_time_until),
             metadata: {
                 appointment_id: appointment.id
             }

@@ -11,6 +11,7 @@ import companies from "./companies";
 import calendars from "./calendars";
 import appointments from "./appointments";
 import divisions from "./divisions";
+import settings from "./settings"
 
 const route = Router()
 
@@ -36,6 +37,7 @@ export default (app, rootDirectory, config) => {
     calendars(route);
     appointments(route);
     divisions(route);
+    settings(route);
 
     return app;
 }

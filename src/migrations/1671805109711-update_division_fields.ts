@@ -1,6 +1,7 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
 
 export class updateDivisionFields1671805109711 implements MigrationInterface {
+    name = "updateDivisionFields1671805109711"
 
     public async up(queryRunner: QueryRunner): Promise<void> {
 

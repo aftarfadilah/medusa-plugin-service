@@ -31,14 +31,4 @@ export class AdminPostCompaniesCompanyReq {
     @IsString()
     @IsOptional()
     name: string
-
-    @IsDate()
-    @IsOptional()
-    @Type(() => Date)
-    work_day_from: Date
-
-    @IsDate()
-    @IsOptional()
-    @Type(() => Date)
-    work_day_to: Date
 }

@@ -24,7 +24,8 @@ export default (app) => {
 export const defaultAdminLocationRelations = [
     "country",
     "company",
-    "calendars"
+    "calendars",
+    "default_working_hour"
 ]
 
 export const defaultAdminLocationFields: (keyof Location)[] = [

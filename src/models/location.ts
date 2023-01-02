@@ -7,6 +7,7 @@ import {
     JoinTable,
     ManyToMany,
     ManyToOne,
+    OneToMany,
 } from "typeorm"
 
 import { Country, SoftDeletableEntity } from "@medusajs/medusa";
@@ -14,6 +15,7 @@ import { DbAwareColumn } from "@medusajs/medusa/dist/utils/db-aware-column";
 import { generateEntityId  } from "@medusajs/medusa/dist/utils";
 import { Company } from "./company";
 import { Calendar } from "./calendar";
+import { DefaultWorkingHour } from "./default-working-hour";
   
 @Entity()
 export class Location extends SoftDeletableEntity {
@@ -50,6 +52,10 @@ export class Location extends SoftDeletableEntity {
         },
     })
     calendars: Calendar[]
+
+    @OneToMany(() => DefaultWorkingHour, dwh => dwh.location)
+    @JoinColumn()
+    default_working_hour: DefaultWorkingHour | null
   
     @Column({ type: "varchar", nullable: true })
     address_1: string | null

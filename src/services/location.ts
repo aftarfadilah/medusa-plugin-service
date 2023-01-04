@@ -11,7 +11,7 @@ import { FindConfig, Selector } from '@medusajs/medusa/dist/types/common';
 import CalendarTimeperiodService from './calendar-timeperiod';
 import CalendarService from './calendar';
 import { addDay, countDays, divideTimes, formatDate, subDay, zeroTimes } from '../utils/date-utils';
-import { union } from "lodash"
+import { union, includes } from "lodash"
 
 type InjectedDependencies = {
     manager: EntityManager
@@ -168,6 +168,78 @@ class LocationService extends TransactionBaseService {
         })
     }
 
+    // Todo Merge DWH and empty WorkingTimes
+    doDWH(dwhList, workingTimes) {
+        const wt = workingTimes
+        // Todo collecting divide times dwh in 1 week
+        const dwhCollection = []
+        for (const x of dwhList) {
+            const dateCurr = new Date(1000 * 24 * 60 * 60 * (3 * (x.day + 1)));
+            const dayIndex = dateCurr.getDay()
+            const dwh = dwhList[dayIndex]
+            const fromTime = dwh.from.split(":")
+            const toTime = dwh.to.split(":")
+            const isWorkingDay = dwh.is_working_day || false
+            const fromX = new Date(dateCurr)
+            let toX = new Date(dateCurr)
+            fromX.setUTCHours(fromTime[0], fromTime[1], fromTime[2])
+            toX.setUTCHours(toTime[0], toTime[1], toTime[2])
+
+            // Todo If `from` time more than `to` time than, we should add 1 day in `to`
+            if (fromX.getTime() > toX.getTime()) {
+                toX = addDay(toX, 1)
+            }
+            
+            dwhCollection[dayIndex] = []
+
+            if (isWorkingDay) {
+                const resultDivide = divideTimes(fromX, toX, 5)
+                let ix = 0
+                for (const xx in resultDivide) {
+                    dwhCollection[dayIndex][ix] = resultDivide[xx]
+                    ix++;
+                }
+            }
+        }
+
+        for (const x in wt) {
+            const dayIndex = new Date(x).getDay()
+
+            const prevDay = new Date(subDay(x, 1))
+            const prevDayKey = formatDate(prevDay)
+            const prevDayIndex = prevDay.getDay()
+            let isDataHaveDWHFromPrevDay = false
+
+            if (dwhCollection[prevDayIndex].length > 1) {
+                let i = 0
+                for (const xx of dwhCollection[prevDayIndex][0]) {
+                    if (includes(wt[prevDayKey], xx)) i++;
+                }
+                let i2 = 0
+                for (const xx of dwhCollection[prevDayIndex][1]) {
+                    if (includes(wt[x], xx)) i2++;
+                }
+                // double check to make sure it's actually dwh (need to make sure this is correct way to check dwh)
+                if (dwhCollection[prevDayIndex][0].length == i && dwhCollection[prevDayIndex][1].length == i2) {
+                    isDataHaveDWHFromPrevDay = true
+                }
+            }
+
+            if (wt[x].length == 0 || isDataHaveDWHFromPrevDay) {
+                wt[x] = union(wt[x], dwhCollection[dayIndex][0])
+
+                // Todo Add for Nextday
+                if (dwhCollection[dayIndex].length > 1) {
+                    const nextDay = new Date(addDay(x, 1))
+                    const nextDayKey = formatDate(nextDay)
+                    wt[nextDayKey] = union(wt[nextDayKey], dwhCollection[dayIndex][1])
+                }
+            }
+        }
+
+        return wt
+    }
+
     async getSlotTime(locationId: string, from?: Date, to?: Date, config?: Record<string, any>) {
         const dateFrom = new Date(from ? zeroTimes(subDay(from, 1)) : zeroTimes(new Date())) // zeroTimes set all time to 00:00:00
         const dateTo = new Date(to ? zeroTimes(addDay(to, 1)) : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))) // 28 = 4 weeks
@@ -181,6 +253,14 @@ class LocationService extends TransactionBaseService {
         // other [note]
         // work_times [working_hour]
         // blocked_times [breaktime / blocked / off]
+        
+        const location = await this.retrieve(locationId, {
+            relations: [
+                "company",
+                "calendars",
+                "default_working_hour"
+            ]
+        })
 
         // making object for each day in working_hour
         for (let i = 0; i < countDays(dateFrom, dateTo); i++) {
@@ -189,13 +269,6 @@ class LocationService extends TransactionBaseService {
             workingTimes[getKey] = []
             blockedTimes[getKey] = []
         }
-        
-        const location = await this.retrieve(locationId, {
-            relations: [
-                "company",
-                "calendars"
-            ]
-        })
 
         // filter calendars with selection one if calendar_id not null
         if (calendar_id) location.calendars = location.calendars.filter((item) => item.id == calendar_id)
@@ -224,14 +297,20 @@ class LocationService extends TransactionBaseService {
             }
         }
 
-        // filter working time with blocked time
-        for (const x in workingTimes) {
+
+        // preparing and merge workingtimes with dwh
+        const dwhList = []
+        location.default_working_hour.map((x) => dwhList[x.day] = x)
+        const wtDWH = this.doDWH(dwhList, workingTimes)
+
+        // filter working time with blocked time and if there no day
+        for (const x in wtDWH) {
             let pushNow = {
                 date: x,
                 slot_times: []
             }
-            
-            pushNow.slot_times = !blockedTimes[x] ? workingTimes[x] : pushNow.slot_times = workingTimes[x].filter(item => !blockedTimes[x].includes(item))
+
+            pushNow.slot_times = !blockedTimes[x] ? wtDWH[x] : pushNow.slot_times = wtDWH[x].filter(item => !blockedTimes[x].includes(item))
             pushNow.slot_times.sort()
             availableTimes.push(pushNow)
         }

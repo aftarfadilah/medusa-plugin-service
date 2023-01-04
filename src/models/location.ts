@@ -55,7 +55,7 @@ export class Location extends SoftDeletableEntity {
 
     @OneToMany(() => DefaultWorkingHour, dwh => dwh.location)
     @JoinColumn()
-    default_working_hour: DefaultWorkingHour | null
+    default_working_hour: DefaultWorkingHour[] | null
   
     @Column({ type: "varchar", nullable: true })
     address_1: string | null

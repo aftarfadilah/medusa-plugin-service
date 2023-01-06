@@ -10,6 +10,7 @@ import locations from "./locations";
 import companies from "./companies";
 import calendars from "./calendars";
 import appointments from "./appointments";
+import divisions from "./divisions";
 
 const route = Router()
 
@@ -34,6 +35,7 @@ export default (app, rootDirectory, config) => {
     companies(route);
     calendars(route);
     appointments(route);
+    divisions(route);
 
     return app;
 }

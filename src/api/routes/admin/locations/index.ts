@@ -41,6 +41,8 @@ export const defaultAdminLocationFields: (keyof Location)[] = [
     "phone",
     "postal_code",
     "province",
+    "latitude",
+    "longitude",
     "created_at",
     "updated_at",
     "deleted_at",

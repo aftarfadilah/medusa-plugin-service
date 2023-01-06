@@ -24,10 +24,6 @@ export class AdminPostLocationsReq {
     @IsString()
     company_id: string
 
-    @IsArray()
-    @IsOptional()
-    calendars: string[]
-
     @IsString()
     first_name: string
 
@@ -55,6 +51,14 @@ export class AdminPostLocationsReq {
 
     @IsString()
     phone: string
+
+    @IsString()
+    @IsOptional()
+    longitude: string
+
+    @IsString()
+    @IsOptional()
+    latitude: string
 
     @IsObject()
     @IsOptional()

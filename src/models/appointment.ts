@@ -5,12 +5,13 @@ import {
     Index,
     JoinColumn,
     ManyToOne,
-    OneToMany
+    OneToMany,
+    Generated
 } from "typeorm"
 
 import { Order, LineItem, SoftDeletableEntity } from "@medusajs/medusa";
-import { DbAwareColumn } from "@medusajs/medusa/dist/utils/db-aware-column";
-import { generateEntityId,  } from "@medusajs/medusa/dist/utils";
+import { DbAwareColumn, resolveDbGenerationStrategy } from "@medusajs/medusa/dist/utils/db-aware-column";
+import { generateEntityId } from "@medusajs/medusa/dist/utils";
 
 export enum AppointmentStatus {
     DRAFT = 'draft',
@@ -29,8 +30,10 @@ export class Appointment extends SoftDeletableEntity {
     @DbAwareColumn({ type: "enum", enum: AppointmentStatus, default: "draft" })
     status: AppointmentStatus
 
-    @Column({ type: "varchar", nullable: true })
-    display_id: string | null
+    @Index()
+    @Column()
+    @Generated(resolveDbGenerationStrategy("increment"))
+    display_id: number
 
     @Column({ type: "timestamp with time zone", nullable: true })
     notified_via_email_at: Date | null

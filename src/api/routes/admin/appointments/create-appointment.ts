@@ -23,9 +23,6 @@ export class AdminPostAppointmentsReq {
     @IsEnum(AppointmentStatus)
     status: AppointmentStatus = AppointmentStatus.DRAFT
 
-    @IsString()
-    location: string
-
     @IsDate()
     @IsOptional()
     @Type(() => Date)

@@ -2,8 +2,8 @@ import { DateComparisonOperator } from "@medusajs/medusa/dist/types/common"
 
 export type CreateCalendarTimeperiodInput = {
     title: string
-    from: Date
-    to: Date
+    from: Date | string
+    to: Date | string
     type: string
     calendar_id: string
     metadata?: Record<string, unknown>

@@ -280,6 +280,14 @@ class LocationService extends TransactionBaseService {
     const blockedTimes = [];
     const divideBy = 5; // 5 minutes
 
+    /**
+     * working_times example
+     * {
+     *     "2023-01-01": [],
+     *     "2023-01-02": [],
+     * }
+     */
+
     const { calendar_id } = config;
 
     // other [note]

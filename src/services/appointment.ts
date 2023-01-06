@@ -218,6 +218,7 @@ class AppointmentService extends TransactionBaseService {
     for (const dateEntry of Object.entries(selectedTimeSlots)) {
       const [dateKey, dateTimeSlots] = dateEntry;
 
+      // because availableSlotTime is object, then we find slotTime date with dateKey
       let availableSlotTime_ = availableSlotTime.filter((slotTime) => slotTime.date == dateKey);
       availableSlotTime_ = availableSlotTime_[0].slot_times;
 
@@ -285,11 +286,11 @@ class AppointmentService extends TransactionBaseService {
     );
 
     // get slot time
-    const today_time_slot = await this.location_.getSlotTime(
+    const today_time_slot = await this.location_.getSlotTime_(
+      calendar_id,
       location_id,
       slot_time,
-      slot_time_until,
-      { calendar_id: calendar_id }
+      slot_time_until
     );
 
     // is slot time available

@@ -235,12 +235,7 @@ class LocationService extends TransactionBaseService {
     return workingSlotTimes;
   }
 
-  async getSlotTime(
-    locationId: string,
-    from?: Date,
-    to?: Date,
-    config?: Record<string, any>
-  ) {
+  async getSlotTime_(calendarId: string, locationId: string, from, to) {
     const dateFrom = new Date(
       from ? zeroTimes(subDay(from, 1)) : zeroTimes(new Date())
     ); // zeroTimes set all time to 00:00:00
@@ -249,20 +244,11 @@ class LocationService extends TransactionBaseService {
         ? zeroTimes(addDay(to, 1))
         : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))
     ); // 28 = 4 weeks
+
     const availableSlotTimes = [];
     const workingSlotTimes = {}; // calendarTimeperiod
     const blockedSlotTimes = {}; // calendarTimeperiod
     const divideBy = 5; // 5 minutes
-
-    const { calendar_id } = config;
-
-    // other [note]
-    // work_times [working_hour]
-    // blocked_times [breaktime / blocked / off]
-
-    const location = await this.retrieve(locationId, {
-      relations: ["company", "calendars", "default_working_hour"],
-    });
 
     /**
      * TODO: Integrate maximum_available_timeslot here
@@ -277,66 +263,63 @@ class LocationService extends TransactionBaseService {
       blockedSlotTimes[getKey] = [];
     }
 
-    // filter calendars with selection one if calendar_id not null
-    if (calendar_id)
-      location.calendars = location.calendars.filter(
-        (item) => item.id == calendar_id
-      );
+    const calendar = await this.calendar_.retrieve(calendarId, {})
     
-    // get all connection calendar from location and collection blocked and working times
-    for (const calendar of location.calendars) {
-      // select working_time and blocked_time
-      const blockedTimePeriods = await this.calendarTimeperiod_.list(
-        {
-          calendar_id: calendar.id,
-          from: { gte: dateFrom, lte: dateTo },
-          to: { gte: dateFrom, lte: dateTo },
-          type: ["breaktime", "blocked", "off"],
-        },
-        { order: { from: "DESC" } }
-      );
-      const workingTimePeriods = await this.calendarTimeperiod_.list(
-        {
-          calendar_id: calendar.id,
-          from: { gte: dateFrom, lte: dateTo },
-          to: { gte: dateFrom, lte: dateTo },
-          type: "working_hour",
-        },
-        { order: { from: "DESC" } }
-      );
+    // other [note]
+    // work_times [working_hour]
+    // blocked_times [breaktime / blocked / off]
 
-      // divide into hours by 5 minutes and day as key object
+    // select working_time and blocked_time
+    const blockedTimePeriods = await this.calendarTimeperiod_.list(
+      {
+        calendar_id: calendar.id,
+        from: { gte: dateFrom, lte: dateTo },
+        to: { gte: dateFrom, lte: dateTo },
+        type: ["breaktime", "blocked", "off"],
+      },
+      { order: { from: "DESC" } }
+    );
+    const workingTimePeriods = await this.calendarTimeperiod_.list(
+      {
+        calendar_id: calendar.id,
+        from: { gte: dateFrom, lte: dateTo },
+        to: { gte: dateFrom, lte: dateTo },
+        type: "working_hour",
+      },
+      { order: { from: "DESC" } }
+    );
 
-      // working time
-      for (const workingTimePeriod of workingTimePeriods) {
-        const resultDivide = divideTimes(
-          workingTimePeriod.from,
-          workingTimePeriod.to,
-          divideBy
+    // divide into hours by 5 minutes and day as key object
+
+    // working time
+    for (const workingTimePeriod of workingTimePeriods) {
+      const resultDivide = divideTimes(
+        workingTimePeriod.from,
+        workingTimePeriod.to,
+        divideBy
+      );
+      for (const dateEntry of Object.entries(resultDivide)) {
+        const [dateKey, dateTimeList] = dateEntry;
+
+        workingSlotTimes[dateKey] = union(
+          workingSlotTimes[dateKey],
+          // @ts-ignore
+          dateTimeList
         );
-        for (const dateEntry of Object.entries(resultDivide)) {
-          const [dateKey, dateTimeList] = dateEntry;
-
-          workingSlotTimes[dateKey] = union(
-            workingSlotTimes[dateKey],
-            // @ts-ignore
-            dateTimeList
-          );
-        }
       }
+    }
 
-      // blocked time
-      for (const blockedTimePeriod of blockedTimePeriods) {
-        const resultDivide = divideTimes(blockedTimePeriod.from, blockedTimePeriod.to, divideBy);
-        for (const dateEntry of Object.entries(resultDivide)) {
-          const [dateKey, dateTimeList] = dateEntry;
+    // blocked time
+    for (const blockedTimePeriod of blockedTimePeriods) {
+      const resultDivide = divideTimes(blockedTimePeriod.from, blockedTimePeriod.to, divideBy);
+      for (const dateEntry of Object.entries(resultDivide)) {
+        const [dateKey, dateTimeList] = dateEntry;
 
-          blockedSlotTimes[dateKey] = union(
-            blockedSlotTimes[dateKey],
-            // @ts-ignore
-            dateTimeList
-          );
-        }
+        blockedSlotTimes[dateKey] = union(
+          blockedSlotTimes[dateKey],
+          // @ts-ignore
+          dateTimeList
+        );
       }
     }
 
@@ -365,6 +348,40 @@ class LocationService extends TransactionBaseService {
     }
 
     return availableSlotTimes;
+  }
+
+  async getSlotTime(
+    locationId: string,
+    from?: Date,
+    to?: Date,
+    config?: Record<string, any>
+  ) {
+    let slotTimes = []
+
+    const { calendar_id } = config
+
+    const location = await this.retrieve(locationId, {
+      relations: ["company", "calendars", "default_working_hour"],
+    });
+
+    // filter calendars with selection one if calendar_id not null
+    if (calendar_id)
+      location.calendars = location.calendars.filter(
+        (item) => item.id == calendar_id
+      );
+    
+    for (const calendar of location.calendars) {
+      const getSlotTime_ = await this.getSlotTime_(calendar.id, locationId, from, to)
+      let slotTimeObject = {
+        ...calendar,
+        available_times: getSlotTime_
+      }
+      slotTimes.push(slotTimeObject)
+    }
+
+    if (slotTimes.length == 1) slotTimes = slotTimes[0]
+
+    return slotTimes
   }
 }
 

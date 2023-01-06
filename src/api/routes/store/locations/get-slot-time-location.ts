@@ -9,8 +9,8 @@ export default async (req, res) => {
     const validated = await validator(GetSlotTimeStoreParams, req.query)
 
     const locationService: LocationService = req.scope.resolve("locationService")
-    const available_times = await locationService.getSlotTime(id, validated.from, validated.to, { calendar_id: validated.calendar_id })
-    res.status(200).json({ available_times })
+    const slotTimes = await locationService.getSlotTime(id, validated.from, validated.to, { calendar_id: validated.calendar_id })
+    res.status(200).json({ slotTimes })
 }
 
 export class GetSlotTimeStoreParams {

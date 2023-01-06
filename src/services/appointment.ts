@@ -211,19 +211,20 @@ class AppointmentService extends TransactionBaseService {
   }
 
   // calculate from and to appointment into slot time and check with available slot time
-  isSlotTimeAvailable(from: Date, to: Date, slot_time) {
+  isSlotTimeAvailable(from: Date, to: Date, availableSlotTime) {
     const divideBy = 5;
-    const resultDivide = divideTimes(new Date(from), new Date(to), divideBy);
+    const selectedTimeSlots = divideTimes(new Date(from), new Date(to), divideBy);
 
-    for (const dateEntry of Object.entries(resultDivide)) {
+    for (const dateEntry of Object.entries(selectedTimeSlots)) {
       const [dateKey, dateTimeSlots] = dateEntry;
 
-      const st = slot_time.filter((xx) => xx.date == dateKey);
-      const stl = st[0].slot_times;
+      let availableSlotTime_ = availableSlotTime.filter((slotTime) => slotTime.date == dateKey);
+      availableSlotTime_ = availableSlotTime_[0].slot_times;
 
       // @ts-ignore
-      for (const xx of dateTimeSlots) {
-        if (includes(stl, xx)) continue;
+      for (const dateTimeSlot of dateTimeSlots) {
+        // compare selectedTimeSlots with availableSlotTime_, if missing one in availableSlotTime then it will be return to false
+        if (includes(availableSlotTime_, dateTimeSlot)) continue;
         return false;
       }
     }

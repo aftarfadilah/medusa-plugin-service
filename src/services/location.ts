@@ -19,6 +19,7 @@ import {
   zeroTimes,
 } from "../utils/date-utils";
 import { union, includes } from "lodash";
+import DefaultWorkingHourService from "./default-working-hour";
 
 type InjectedDependencies = {
   manager: EntityManager;
@@ -26,6 +27,7 @@ type InjectedDependencies = {
   eventBusService: EventBusService;
   calendarService: CalendarService;
   calendarTimeperiodService: CalendarTimeperiodService;
+  defaultWorkingHourService: DefaultWorkingHourService
 };
 
 class LocationService extends TransactionBaseService {
@@ -36,6 +38,7 @@ class LocationService extends TransactionBaseService {
   protected readonly eventBus_: EventBusService;
   protected readonly calendar_: CalendarService;
   protected readonly calendarTimeperiod_: CalendarTimeperiodService;
+  protected readonly defaultWorkingHour_: DefaultWorkingHourService
 
   static readonly IndexName = `locations`;
   static readonly Events = {
@@ -50,6 +53,7 @@ class LocationService extends TransactionBaseService {
     eventBusService,
     calendarService,
     calendarTimeperiodService,
+    defaultWorkingHourService
   }: InjectedDependencies) {
     super(arguments[0]);
 
@@ -58,6 +62,7 @@ class LocationService extends TransactionBaseService {
     this.eventBus_ = eventBusService;
     this.calendar_ = calendarService;
     this.calendarTimeperiod_ = calendarTimeperiodService;
+    this.defaultWorkingHour_ = defaultWorkingHourService
   }
 
   async list(
@@ -183,82 +188,51 @@ class LocationService extends TransactionBaseService {
     });
   }
 
-  // Todo Merge DWH and empty WorkingTimes
-  doDWH(dwhList, workingTimes) {
-    const wt = workingTimes;
-    // Todo collecting divide times dwh in 1 week
-    const dwhCollection = [];
-    for (const x of dwhList) {
-      const dateCurr = new Date(1000 * 24 * 60 * 60 * (3 * (x.day + 1)));
-      const dayIndex = dateCurr.getDay();
-      const dwh = dwhList[dayIndex];
-      const fromTime = dwh.from.split(":");
-      const toTime = dwh.to.split(":");
-      const isWorkingDay = dwh.is_working_day || false;
-      const fromX = new Date(dateCurr);
-      let toX = new Date(dateCurr);
-      fromX.setUTCHours(fromTime[0], fromTime[1], fromTime[2]);
-      toX.setUTCHours(toTime[0], toTime[1], toTime[2]);
+  // Todo Merge DWH to empty WorkingTimes
+  mergeDefaultWorkingHourToWorkingSlotTimes(dwhSlotTimes, workingSlotTimes) {
+    for (const workingTime of Object.entries(workingSlotTimes)) {
+      const [wtKey, wtList] = workingTime
+      const dayIndex = new Date(wtKey).getDay();
 
-      // Todo If `from` time more than `to` time than, we should add 1 day in `to`
-      if (fromX.getTime() > toX.getTime()) {
-        toX = addDay(toX, 1);
-      }
-
-      dwhCollection[dayIndex] = [];
-
-      if (isWorkingDay) {
-        const resultDivide = divideTimes(fromX, toX, 5);
-        let ix = 0;
-
-        for (const dateEntry in Object.entries(resultDivide)) {
-          const [dateKey, dateTimeList] = dateEntry;
-
-          dwhCollection[dayIndex][ix] = resultDivide[dateKey];
-          ix++;
-        }
-      }
-    }
-
-    for (const x in wt) {
-      const dayIndex = new Date(x).getDay();
-
-      const prevDay = new Date(subDay(x, 1));
+      const prevDay = new Date(subDay(wtKey, 1));
       const prevDayKey = formatDate(prevDay);
       const prevDayIndex = prevDay.getDay();
+
+      // Todo Checking if it's data from DefaultWorkingHour not WorkingHour CalendarTimeperiod
       let isDataHaveDWHFromPrevDay = false;
 
-      if (dwhCollection[prevDayIndex].length > 1) {
+      if (dwhSlotTimes[prevDayIndex].length > 1) {
         let i = 0;
-        for (const xx of dwhCollection[prevDayIndex][0]) {
-          if (includes(wt[prevDayKey], xx)) i++;
+        for (const prevDaySlotTime of dwhSlotTimes[prevDayIndex][0]) {
+          if (includes(workingSlotTimes[prevDayKey], prevDaySlotTime)) i++;
         }
         let i2 = 0;
-        for (const xx of dwhCollection[prevDayIndex][1]) {
-          if (includes(wt[x], xx)) i2++;
+        for (const nextDaySlotTime of dwhSlotTimes[prevDayIndex][1]) {
+          if (includes(workingSlotTimes[wtKey], nextDaySlotTime)) i2++;
         }
         // double check to make sure it's actually dwh (need to make sure this is correct way to check dwh)
         if (
-          dwhCollection[prevDayIndex][0].length == i &&
-          dwhCollection[prevDayIndex][1].length == i2
+          dwhSlotTimes[prevDayIndex][0].length == i &&
+          dwhSlotTimes[prevDayIndex][1].length == i2
         ) {
           isDataHaveDWHFromPrevDay = true;
         }
       }
 
-      if (wt[x].length == 0 || isDataHaveDWHFromPrevDay) {
-        wt[x] = union(wt[x], dwhCollection[dayIndex][0]);
+      // Todo if workingSlotTimes empty it's gonna add DefaultWorkingHour
+      if (workingSlotTimes[wtKey].length == 0 || isDataHaveDWHFromPrevDay) {
+        workingSlotTimes[wtKey] = union(workingSlotTimes[wtKey], dwhSlotTimes[dayIndex][0]);
 
         // Todo Add for Nextday
-        if (dwhCollection[dayIndex].length > 1) {
-          const nextDay = new Date(addDay(x, 1));
+        if (dwhSlotTimes[dayIndex].length > 1) {
+          const nextDay = new Date(addDay(wtKey, 1));
           const nextDayKey = formatDate(nextDay);
-          wt[nextDayKey] = union(wt[nextDayKey], dwhCollection[dayIndex][1]);
+          workingSlotTimes[nextDayKey] = union(workingSlotTimes[nextDayKey], dwhSlotTimes[dayIndex][1]);
         }
       }
     }
 
-    return wt;
+    return workingSlotTimes;
   }
 
   async getSlotTime(
@@ -275,18 +249,10 @@ class LocationService extends TransactionBaseService {
         ? zeroTimes(addDay(to, 1))
         : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))
     ); // 28 = 4 weeks
-    const availableTimes = [];
-    const workingTimes = [];
-    const blockedTimes = [];
+    const availableSlotTimes = [];
+    const workingSlotTimes = {}; // calendarTimeperiod
+    const blockedSlotTimes = {}; // calendarTimeperiod
     const divideBy = 5; // 5 minutes
-
-    /**
-     * working_times example
-     * {
-     *     "2023-01-01": [],
-     *     "2023-01-02": [],
-     * }
-     */
 
     const { calendar_id } = config;
 
@@ -307,8 +273,8 @@ class LocationService extends TransactionBaseService {
     for (let i = 0; i < countDays(dateFrom, dateTo); i++) {
       const dateCurr = addDay(dateFrom, i);
       const getKey = formatDate(dateCurr);
-      workingTimes[getKey] = [];
-      blockedTimes[getKey] = [];
+      workingSlotTimes[getKey] = [];
+      blockedSlotTimes[getKey] = [];
     }
 
     // filter calendars with selection one if calendar_id not null
@@ -316,10 +282,11 @@ class LocationService extends TransactionBaseService {
       location.calendars = location.calendars.filter(
         (item) => item.id == calendar_id
       );
+    
     // get all connection calendar from location and collection blocked and working times
     for (const calendar of location.calendars) {
       // select working_time and blocked_time
-      const blockedTimePeriodList = await this.calendarTimeperiod_.list(
+      const blockedTimePeriods = await this.calendarTimeperiod_.list(
         {
           calendar_id: calendar.id,
           from: { gte: dateFrom, lte: dateTo },
@@ -328,7 +295,7 @@ class LocationService extends TransactionBaseService {
         },
         { order: { from: "DESC" } }
       );
-      const workingTimePeriodList = await this.calendarTimeperiod_.list(
+      const workingTimePeriods = await this.calendarTimeperiod_.list(
         {
           calendar_id: calendar.id,
           from: { gte: dateFrom, lte: dateTo },
@@ -341,58 +308,63 @@ class LocationService extends TransactionBaseService {
       // divide into hours by 5 minutes and day as key object
 
       // working time
-      for (const workingTimePeriod of workingTimePeriodList) {
+      for (const workingTimePeriod of workingTimePeriods) {
         const resultDivide = divideTimes(
           workingTimePeriod.from,
           workingTimePeriod.to,
           divideBy
         );
-        for (const dateEntry in Object.entries(resultDivide)) {
+        for (const dateEntry of Object.entries(resultDivide)) {
           const [dateKey, dateTimeList] = dateEntry;
 
-          workingTimes[dateKey] = union(
-            workingTimes[dateKey],
-            resultDivide[dateKey]
+          workingSlotTimes[dateKey] = union(
+            workingSlotTimes[dateKey],
+            // @ts-ignore
+            dateTimeList
           );
         }
       }
 
       // blocked time
-      for (const x of blockedTimePeriodList) {
-        const resultDivide = divideTimes(x.from, x.to, divideBy);
-        for (const dateEntry in Object.entries(resultDivide)) {
+      for (const blockedTimePeriod of blockedTimePeriods) {
+        const resultDivide = divideTimes(blockedTimePeriod.from, blockedTimePeriod.to, divideBy);
+        for (const dateEntry of Object.entries(resultDivide)) {
           const [dateKey, dateTimeList] = dateEntry;
 
-          blockedTimes[dateKey] = union(
-            blockedTimes[dateKey],
-            resultDivide[dateKey]
+          blockedSlotTimes[dateKey] = union(
+            blockedSlotTimes[dateKey],
+            // @ts-ignore
+            dateTimeList
           );
         }
       }
     }
 
     // preparing and merge workingtimes with dwh
-    const dwhList = [];
-    location.default_working_hour.map((dwh) => (dwhList[dwh.day] = dwh));
-    const wtDWH = this.doDWH(dwhList, workingTimes);
+    const dwhSlotTimes = await this.defaultWorkingHour_.getDefaultWorkingHourSlotTimesByLocationId(locationId);
+    const mergeDWHResult = this.mergeDefaultWorkingHourToWorkingSlotTimes(dwhSlotTimes, workingSlotTimes);
 
     // filter working time with blocked time and if there no day
-    for (const x in wtDWH) {
-      let pushNow = {
-        date: x,
+    for (const workingSlotTime of Object.entries(mergeDWHResult)) {
+      const [wtKey, wtTimeList] = workingSlotTime
+
+      let availableObject = {
+        date: wtKey,
         slot_times: [],
       };
 
-      pushNow.slot_times = !blockedTimes[x]
-        ? wtDWH[x]
-        : (pushNow.slot_times = wtDWH[x].filter(
-            (item) => !blockedTimes[x].includes(item)
+      availableObject.slot_times = !blockedSlotTimes[wtKey]
+        ? mergeDWHResult[wtKey]
+        : (availableObject.slot_times = mergeDWHResult[wtKey].filter(
+            (st) => !blockedSlotTimes[wtKey].includes(st)
           ));
-      pushNow.slot_times.sort();
-      availableTimes.push(pushNow);
+      
+      availableObject.slot_times.sort(); // sort the slot_times
+
+      availableSlotTimes.push(availableObject);
     }
 
-    return availableTimes;
+    return availableSlotTimes;
   }
 }
 

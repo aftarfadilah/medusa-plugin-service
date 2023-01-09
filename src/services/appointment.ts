@@ -16,7 +16,6 @@ import {
 } from "../types/appointment";
 import { setMetadata } from "@medusajs/medusa/dist/utils";
 import { FindConfig, Selector } from "@medusajs/medusa/dist/types/common";
-import { selector } from "../../types/appointment";
 import CalendarService from "./calendar";
 import CalendarTimeperiodService from "./calendar-timeperiod";
 import LocationService from "./location";
@@ -29,8 +28,8 @@ type InjectedDependencies = {
   calendarService: CalendarService;
   calendarTimeperiodService: CalendarTimeperiodService;
   locationService: LocationService;
-  eventBusService: EventBusService;
   orderService: OrderService;
+  eventBusService: EventBusService;
 };
 
 class AppointmentService extends TransactionBaseService {
@@ -204,7 +203,7 @@ class AppointmentService extends TransactionBaseService {
   async getCurrent(division: string) {
     const manager = this.manager_;
 
-    const selector: selector = {};
+    const selector: Selector<Appointment> = {};
 
     const hourInMs = 1000 * 60 * 60;
     const now = new Date();
@@ -278,14 +277,27 @@ class AppointmentService extends TransactionBaseService {
   }
 
   // calculate from and to appointment into slot time and check with available slot time
-  isSlotTimeAvailable(from: Date, to: Date, slot_time) {
+  isSlotTimeAvailable(from: Date, to: Date, availableSlotTime) {
     const divideBy = 5;
-    const resultDivide = divideTimes(new Date(from), new Date(to), divideBy);
-    for (const x in resultDivide) {
-      const st = slot_time.filter((xx) => xx.date == x);
-      const stl = st[0].slot_times;
-      for (const xx of resultDivide[x]) {
-        if (includes(stl, xx)) continue;
+    const selectedTimeSlots = divideTimes(
+      new Date(from),
+      new Date(to),
+      divideBy
+    );
+
+    for (const dateEntry of Object.entries(selectedTimeSlots)) {
+      const [dateKey, dateTimeSlots] = dateEntry;
+
+      // because availableSlotTime is object, then we find slotTime date with dateKey
+      let availableSlotTime_ = availableSlotTime.filter(
+        (slotTime) => slotTime.date == dateKey
+      );
+      availableSlotTime_ = availableSlotTime_[0].slot_times;
+
+      // @ts-ignore
+      for (const dateTimeSlot of dateTimeSlots) {
+        // compare selectedTimeSlots with availableSlotTime_, if missing one in availableSlotTime then it will be return to false
+        if (includes(availableSlotTime_, dateTimeSlot)) continue;
         return false;
       }
     }
@@ -346,11 +358,11 @@ class AppointmentService extends TransactionBaseService {
     );
 
     // get slot time
-    const today_time_slot = await this.location_.getSlotTime(
+    const today_time_slot = await this.location_.getSlotTime_(
+      calendar_id,
       location_id,
       slot_time,
-      slot_time_until,
-      { calendar_id: calendar_id }
+      slot_time_until
     );
 
     // is slot time available

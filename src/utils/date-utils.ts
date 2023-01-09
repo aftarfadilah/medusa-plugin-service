@@ -1,5 +1,5 @@
 export function formatDate(date) {
-  var d = new Date(date),
+  let d = new Date(date),
     month = "" + (d.getUTCMonth() + 1),
     day = "" + d.getUTCDate(),
     year = d.getUTCFullYear();
@@ -22,19 +22,31 @@ export function subDay(date, day) {
   return new Date(d);
 }
 
+/**
+ * Takes two Date and return an object with the dates as the key and for each key, there exists an array of the times
+ * @param f From Date
+ * @param t To Date
+ * @param byMinutes divided by how many minutes
+ */
 export function divideTimes(f: Date, t: Date, byMinutes: number = 5) {
   const minutes = (t.getTime() - f.getTime()) / 1000 / 60;
-  const result = [];
+  const result = {};
 
   for (let i = 0; i < minutes / byMinutes; i++) {
     const dateNow = new Date(f);
     dateNow.setUTCMinutes(f.getUTCMinutes() + byMinutes * i);
+
     const key = formatDate(dateNow);
-    if (!result[key]) result[key] = [];
+
+    if (!result[key]) {
+      result[key] = [];
+    }
+
     let hours: any = dateNow.getUTCHours();
     let minutes: any = dateNow.getUTCMinutes();
     if (hours < 10) hours = `0${hours}`;
     if (minutes < 10) minutes = `0${minutes}`;
+
     result[key].push(`${hours}:${minutes}`);
   }
 

@@ -20,12 +20,4 @@ export default async (req, res) => {
 export class AdminPostCompaniesReq {
     @IsString()
     name: string
-
-    @IsDate()
-    @Type(() => Date)
-    work_day_from: Date
-
-    @IsDate()
-    @Type(() => Date)
-    work_day_to: Date
 }

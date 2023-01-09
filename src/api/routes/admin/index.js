@@ -12,6 +12,7 @@ import calendars from "./calendars";
 import appointments from "./appointments";
 import divisions from "./divisions";
 import settings from "./settings"
+import defaultWorkingHours from "./default-working-hour"
 
 const route = Router()
 
@@ -38,6 +39,7 @@ export default (app, rootDirectory, config) => {
     appointments(route);
     divisions(route);
     settings(route);
+    defaultWorkingHours(route);
 
     return app;
 }

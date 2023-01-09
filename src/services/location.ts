@@ -20,6 +20,7 @@ import {
 } from "../utils/date-utils";
 import { union, includes } from "lodash";
 import DefaultWorkingHourService from "./default-working-hour";
+import ServiceSettingService from "./service-setting";
 
 type InjectedDependencies = {
   manager: EntityManager;
@@ -27,7 +28,8 @@ type InjectedDependencies = {
   eventBusService: EventBusService;
   calendarService: CalendarService;
   calendarTimeperiodService: CalendarTimeperiodService;
-  defaultWorkingHourService: DefaultWorkingHourService
+  defaultWorkingHourService: DefaultWorkingHourService;
+  serviceSettingService: ServiceSettingService;
 };
 
 class LocationService extends TransactionBaseService {
@@ -38,7 +40,8 @@ class LocationService extends TransactionBaseService {
   protected readonly eventBus_: EventBusService;
   protected readonly calendar_: CalendarService;
   protected readonly calendarTimeperiod_: CalendarTimeperiodService;
-  protected readonly defaultWorkingHour_: DefaultWorkingHourService
+  protected readonly defaultWorkingHour_: DefaultWorkingHourService;
+  protected readonly setting_: ServiceSettingService;
 
   static readonly IndexName = `locations`;
   static readonly Events = {
@@ -53,7 +56,8 @@ class LocationService extends TransactionBaseService {
     eventBusService,
     calendarService,
     calendarTimeperiodService,
-    defaultWorkingHourService
+    defaultWorkingHourService,
+    serviceSettingService
   }: InjectedDependencies) {
     super(arguments[0]);
 
@@ -62,7 +66,8 @@ class LocationService extends TransactionBaseService {
     this.eventBus_ = eventBusService;
     this.calendar_ = calendarService;
     this.calendarTimeperiod_ = calendarTimeperiodService;
-    this.defaultWorkingHour_ = defaultWorkingHourService
+    this.defaultWorkingHour_ = defaultWorkingHourService;
+    this.setting_ = serviceSettingService;
   }
 
   async list(
@@ -239,7 +244,7 @@ class LocationService extends TransactionBaseService {
     const dateFrom = new Date(
       from ? zeroTimes(subDay(from, 1)) : zeroTimes(new Date())
     ); // zeroTimes set all time to 00:00:00
-    const dateTo = new Date(
+    let dateTo = new Date(
       to
         ? zeroTimes(addDay(to, 1))
         : zeroTimes(new Date().setUTCDate(dateFrom.getDate() + 28))
@@ -249,11 +254,9 @@ class LocationService extends TransactionBaseService {
     const workingSlotTimes = {}; // calendarTimeperiod
     const blockedSlotTimes = {}; // calendarTimeperiod
     const divideBy = 5; // 5 minutes
+    const maxSlotTime = new Date((await this.setting_.get('automation_max_slot_date_time')).value)
 
-    /**
-     * TODO: Integrate maximum_available_timeslot here
-     *  Instead of countDays(from-to) do (from-maximumAvailableTimeslotDate)
-     */
+    if (dateTo > maxSlotTime) dateTo = maxSlotTime
 
     // making object for each day in working_hour
     for (let i = 0; i < countDays(dateFrom, dateTo); i++) {

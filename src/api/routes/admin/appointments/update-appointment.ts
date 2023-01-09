@@ -35,10 +35,6 @@ export class AdminPostAppointmentsAppointmentReq {
     @ValidateIf((object, value) => value !== undefined)
     status?: AppointmentStatus
 
-    @IsString()
-    @IsOptional()
-    location?: string
-
     @IsDate()
     @IsOptional()
     @Type(() => Date)

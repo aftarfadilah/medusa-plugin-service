@@ -1,36 +1,52 @@
 import { EntityManager } from "typeorm";
 import AppointmentService from "../services/appointment";
-import { AppointmentStatus } from "../models/appointment";
-import { AdminPostAppointmentsReq } from "../api/routes/admin/appointments/create-appointment";
+import { PostMakeAppointmentReq } from "../api/routes/store/customers/make-appointment"
 import { validator } from "../utils/validator"
-import { EventBusService } from "@medusajs/medusa";
+import { EventBusService, OrderService } from "@medusajs/medusa";
+import { MedusaError } from "medusa-core-utils";
 
 type InjectedDependencies = { 
     manager: EntityManager;
     eventBusService: EventBusService;
     appointmentService: AppointmentService;
+    orderService: OrderService
 }
 
 class OrderDoingSubscriber {
     manager_: EntityManager;
-    appointmentService_: AppointmentService;
+    appointment_: AppointmentService;
+    order_: OrderService;
 
-    constructor({ manager, eventBusService, appointmentService }: InjectedDependencies ) {
+    constructor({ manager, eventBusService, appointmentService, orderService }: InjectedDependencies ) {
         this.manager_ = manager;
-        this.appointmentService_ = appointmentService;
+        this.appointment_ = appointmentService;
+        this.order_ = orderService
 
+        // subscribe for make appointment during checkout
         eventBusService.subscribe("order.placed", async ({ id }: { id: string }) => {
-            const dataInput = {
-                location: "",
-                order_id: id,
-                is_confirmed: false,
-                status: AppointmentStatus.DRAFT
+            const order = await this.order_.retrieve(id,  { relations: ["cart"] })
+            
+            let isMakeAppointment = false
+
+            // check if make appoinment during checkout
+            if (order.cart.context?.is_make_appointment == true) isMakeAppointment = true
+
+            if (isMakeAppointment) {
+                // @ts-ignore
+                const { location_id, slot_time, calendar_id } = order.cart.context.data_make_appointment
+
+                if (!location_id || !slot_time || !calendar_id) throw new MedusaError(MedusaError.Types.INVALID_DATA, "location_id, calendar_id or slot_time not filled, create appointment failed.", "400")
+
+                const dataInput = {
+                    order_id: id,
+                    location_id: location_id,
+                    calendar_id: calendar_id,
+                    slot_time: new Date(slot_time).toISOString()
+                }
+        
+                const validated = await validator(PostMakeAppointmentReq, dataInput)
+                await this.appointment_.makeAppointment(validated)
             }
-    
-            const validated = await validator(AdminPostAppointmentsReq, dataInput)
-            await this.manager_.transaction(async (transactionManager) => {
-                return await this.appointmentService_.withTransaction(transactionManager).create(validated);
-            })
         });
     }
 }

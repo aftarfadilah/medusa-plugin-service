@@ -382,8 +382,6 @@ class LocationService extends TransactionBaseService {
       slotTimes.push(slotTimeObject)
     }
 
-    if (slotTimes.length == 1) slotTimes = slotTimes[0]
-
     return slotTimes
   }
 }

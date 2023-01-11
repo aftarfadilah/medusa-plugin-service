@@ -19,14 +19,12 @@ import {
 } from "../types/appointment";
 import { setMetadata } from "@medusajs/medusa/dist/utils";
 import { FindConfig, Selector } from "@medusajs/medusa/dist/types/common";
-import { selector } from "../../types/appointment";
 import CalendarService from "./calendar";
 import CalendarTimeperiodService from "./calendar-timeperiod";
 import LocationService from "./location";
 import { divideTimes } from "../utils/date-utils";
 import { includes } from "lodash";
 import DivisionService from "./division";
-import { format } from "date-fns";
 
 type InjectedDependencies = {
   manager: EntityManager;
@@ -96,10 +94,9 @@ class AppointmentService extends TransactionBaseService {
     const appointmentRepo = this.manager_.getCustomRepository(
       this.appointmentRepository_
     );
-
     const query = buildQuery(selector, config);
 
-    console.log("Query", query);
+    console.log("List appointment", query);
 
     return appointmentRepo.findAndCount(query);
   }
@@ -109,9 +106,7 @@ class AppointmentService extends TransactionBaseService {
     const appointmentRepo = manager.getCustomRepository(
       this.appointmentRepository_
     );
-    const orderRepo = this.manager_.getCustomRepository(this.orderRepository_);
 
-    // Get the appointment first
     const appointment = await appointmentRepo.findOne(appointmentId, config);
 
     if (!appointment) {
@@ -122,37 +117,6 @@ class AppointmentService extends TransactionBaseService {
     }
 
     return appointment;
-
-    // Get the order of the appointment
-    const { select, relations, totalsToSelect } =
-      this.transformQueryForTotals(config);
-
-    const query = {
-      where: { id: appointment.order_id },
-    } as FindConfig<Order>;
-
-    if (relations && relations.length > 0) {
-      query.relations = relations;
-    }
-
-    if (select && select.length > 0) {
-      query.select = select;
-    }
-
-    const rels = query.relations;
-    delete query.relations;
-    const rawOrder = await orderRepo.findOneWithRelations(rels, query);
-
-    if (!rawOrder) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        `Order ${appointment.order_id} to the appointment ${appointmentId} has not been found.`
-      );
-    }
-
-    appointment.order = rawOrder;
-
-    return this.decorateTotals(appointment, totalsToSelect);
   }
 
   async create(
@@ -251,30 +215,33 @@ class AppointmentService extends TransactionBaseService {
   }
 
   async getCurrent(divisionId: string, currentTime: string, birthDate: Date) {
-    const selector: Selector<Appointment> = {};
-
     const hourInMs = 1000 * 60 * 60;
     const now = new Date(parseInt(currentTime));
-    // console.log("Now", now);
+    console.log("Now", now);
+
     // Check in the previous and next 2 hours
+    const dateTimeFrom = new Date(now.getTime() - 2 * hourInMs);
+    const dateTimeTo = new Date(now.getTime() + 2 * hourInMs);
 
-    const previousDateTime = new Date(now.getTime() - 2 * hourInMs);
-    const afterDateTime = new Date(now.getTime() + 2 * hourInMs);
+    console.log("Check in range of ", dateTimeFrom, dateTimeTo);
 
-    selector.from = {
-      gte: previousDateTime,
+    const selector: Selector<Appointment> = {
+      from: {
+        gte: dateTimeFrom,
+        lte: dateTimeTo,
+      },
+      to: {
+        gte: dateTimeFrom,
+        lte: dateTimeTo,
+      },
     };
 
-    // selector.to = {
-    // lte: afterDateTime,
-    // };
+    const response = await this.list(selector, {
+      order: {
+        from: "ASC",
+      },
+    });
 
-    // console.log("Selector", selector);
-
-    // const response = await appointmentRepo.findAndCount(query);
-    const response = await this.list(selector);
-
-    // console.log("Response", response);
     const [appointmentList, appointmentCount] = response;
 
     if (appointmentCount === 0)
@@ -284,16 +251,9 @@ class AppointmentService extends TransactionBaseService {
         "400"
       );
 
-    // console.log("Appointment list", appointmentList);
-
     for (const appointment of appointmentList) {
       const { metadata } = appointment;
 
-      /**
-       * TODO: Check if this appointment is from the right divison
-       * In the meta_data of the appointment should be a calendar_timeperiod id
-       * Retrieve the calendar_timeperiod and check if the division is correct and assign this to the value
-       */
       const appointmentTimePeriodId = metadata["calendar_time_period_id"];
 
       // console.log("appointmentTimePeriod", appointmentTimePeriodId);
@@ -306,12 +266,8 @@ class AppointmentService extends TransactionBaseService {
           }
         );
 
-        // console.log("Appointmentment -> Timeperiod ", appointmentTimePeriod);
-
         const { id: appointmentDivisionId } =
           appointmentTimePeriod.calendar.division;
-
-        console.log("Comparing", divisionId, appointmentDivisionId);
 
         const isRightDivision = divisionId === appointmentDivisionId;
 
@@ -321,7 +277,6 @@ class AppointmentService extends TransactionBaseService {
 
         const customerBirthday = appointment_.order.customer.metadata
           .birthday as string;
-        console.log("metadata", metadata);
 
         if (!customerBirthday) {
           throw new MedusaError(
@@ -344,34 +299,17 @@ class AppointmentService extends TransactionBaseService {
 
         const isRightCustomer = sameYear && sameMonth && sameDay;
 
-        console.log("Is right division", isRightDivision);
-        console.log("Is right customer", isRightCustomer);
-
         if (isRightDivision && isRightCustomer) {
-          console.log("Correct appointment", appointment);
-
           return appointment;
         }
       }
-
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "No appointment found",
-        "400"
-      );
-
-      // return undefined;
-
-      // if (isRightDivision) {
-      //   return appointment;
-      //
-      //   // const appointment_ =  await this.retrieve(appointment.id, {
-      //   //     relations: ["order"]
-      //   // });
-      //   //
-      //   // appointment_.order = await this.order_.retrieve(appointment_.order.id, {relations: ["items"]})
-      // }
     }
+
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "No appointment found",
+      "400"
+    );
   }
 
   checkIfCurrent(appointment: Appointment, hourRange: number) {
@@ -526,186 +464,6 @@ class AppointmentService extends TransactionBaseService {
     return await this.retrieve(appointment.id, {
       relations: ["order", "order.items"],
     });
-  }
-
-  protected transformQueryForTotals(config: FindConfig<Order>): {
-    relations: string[] | undefined;
-    select: FindConfig<Order>["select"];
-    totalsToSelect: FindConfig<Order>["select"];
-  } {
-    let { select, relations } = config;
-
-    if (!select) {
-      return {
-        select,
-        relations,
-        totalsToSelect: [],
-      };
-    }
-
-    const totalFields = [
-      "subtotal",
-      "tax_total",
-      "shipping_total",
-      "discount_total",
-      "gift_card_total",
-      "total",
-      "paid_total",
-      "refunded_total",
-      "refundable_amount",
-      "items.refundable",
-      "swaps.additional_items.refundable",
-      "claims.additional_items.refundable",
-    ];
-
-    const totalsToSelect = select.filter((v) => totalFields.includes(v));
-    if (totalsToSelect.length > 0) {
-      const relationSet = new Set(relations);
-      relationSet.add("items");
-      relationSet.add("items.tax_lines");
-      relationSet.add("items.adjustments");
-      relationSet.add("swaps");
-      relationSet.add("swaps.additional_items");
-      relationSet.add("swaps.additional_items.tax_lines");
-      relationSet.add("swaps.additional_items.adjustments");
-      relationSet.add("claims");
-      relationSet.add("claims.additional_items");
-      relationSet.add("claims.additional_items.tax_lines");
-      relationSet.add("claims.additional_items.adjustments");
-      relationSet.add("discounts");
-      relationSet.add("discounts.rule");
-      relationSet.add("gift_cards");
-      relationSet.add("gift_card_transactions");
-      relationSet.add("refunds");
-      relationSet.add("shipping_methods");
-      relationSet.add("shipping_methods.tax_lines");
-      relationSet.add("region");
-      relations = [...relationSet];
-
-      select = select.filter((v) => !totalFields.includes(v));
-    }
-
-    const toSelect = [...select];
-    if (toSelect.length > 0 && toSelect.indexOf("tax_rate") === -1) {
-      toSelect.push("tax_rate");
-    }
-
-    return {
-      relations,
-      select: toSelect,
-      totalsToSelect,
-    };
-  }
-
-  protected async decorateTotals(
-    appointment: Appointment,
-    totalsFields: string[] = []
-  ): Promise<Appointment> {
-    const { order } = appointment;
-
-    for (const totalField of totalsFields) {
-      switch (totalField) {
-        case "shipping_total": {
-          order.shipping_total = await this.totalsService_.getShippingTotal(
-            order
-          );
-          break;
-        }
-        case "gift_card_total": {
-          const giftCardBreakdown = await this.totalsService_.getGiftCardTotal(
-            order
-          );
-          order.gift_card_total = giftCardBreakdown.total;
-          order.gift_card_tax_total = giftCardBreakdown.tax_total;
-          break;
-        }
-        case "discount_total": {
-          order.discount_total = await this.totalsService_.getDiscountTotal(
-            order
-          );
-          break;
-        }
-        case "tax_total": {
-          order.tax_total = await this.totalsService_.getTaxTotal(order);
-          break;
-        }
-        case "subtotal": {
-          order.subtotal = await this.totalsService_.getSubtotal(order);
-          break;
-        }
-        case "total": {
-          order.total = await this.totalsService_
-            .withTransaction(this.manager_)
-            .getTotal(order);
-          break;
-        }
-        case "refunded_total": {
-          order.refunded_total = this.totalsService_.getRefundedTotal(order);
-          break;
-        }
-        case "paid_total": {
-          order.paid_total = this.totalsService_.getPaidTotal(order);
-          break;
-        }
-        case "refundable_amount": {
-          const paid_total = this.totalsService_.getPaidTotal(order);
-          const refunded_total = this.totalsService_.getRefundedTotal(order);
-          order.refundable_amount = paid_total - refunded_total;
-          break;
-        }
-        case "items.refundable": {
-          const items: LineItem[] = [];
-          for (const item of order.items) {
-            items.push({
-              ...item,
-              refundable: await this.totalsService_.getLineItemRefund(order, {
-                ...item,
-                quantity: item.quantity - (item.returned_quantity || 0),
-              } as LineItem),
-            } as LineItem);
-          }
-          order.items = items;
-          break;
-        }
-        case "swaps.additional_items.refundable": {
-          for (const s of order.swaps) {
-            const items: LineItem[] = [];
-            for (const item of s.additional_items) {
-              items.push({
-                ...item,
-                refundable: await this.totalsService_.getLineItemRefund(order, {
-                  ...item,
-                  quantity: item.quantity - (item.returned_quantity || 0),
-                } as LineItem),
-              } as LineItem);
-            }
-            s.additional_items = items;
-          }
-          break;
-        }
-        case "claims.additional_items.refundable": {
-          for (const c of order.claims) {
-            const items: LineItem[] = [];
-            for (const item of c.additional_items) {
-              items.push({
-                ...item,
-                refundable: await this.totalsService_.getLineItemRefund(order, {
-                  ...item,
-                  quantity: item.quantity - (item.returned_quantity || 0),
-                } as LineItem),
-              } as LineItem);
-            }
-            c.additional_items = items;
-          }
-          break;
-        }
-        default: {
-          break;
-        }
-      }
-    }
-
-    return { ...appointment, order } as Appointment;
   }
 }
 

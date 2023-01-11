@@ -4,28 +4,49 @@ import middlewares from "../../../middleware";
 import "reflect-metadata";
 import { transformQuery } from "@medusajs/medusa/dist/api/middlewares";
 import { FindParams } from "@medusajs/medusa/dist/types/common";
-import { defaultAdminOrdersRelations, Order } from "@medusajs/medusa";
+import {
+  defaultAdminOrdersFields,
+  defaultAdminOrdersRelations,
+  Order,
+} from "@medusajs/medusa";
 
 const route = Router();
 
 export default (app) => {
   app.use("/appointments", route);
 
-  const relations = [...defaultAdminOrdersRelations];
-
   route.post("/", middlewares.wrap(require("./create-appointment").default));
 
   route.get("/", middlewares.wrap(require("./list-appointment").default));
 
   // Get the order of the appointment with the same params as in get-order admin appointment
+  // const defaultRelations = [
+  //   ...defaultAdminAppointmentRelations,
+  //   // ...defaultAdminOrdersRelations.map((field) => `order.${field}`),
+  // ];
+  //
+  // const defaultFields = [
+  //   ...defaultAdminAppointmentsFields,
+  //   // ...defaultAdminOrdersFields.map((field) => `order.${field}`),
+  // ];
+  //
+  // const allowedFields = [
+  //   ...allowedAdminAppointmentsFields,
+  //   // ...defaultAdminOrdersFields.map((field) => `order.${field}`),
+  // ];
+  //
+  // const allowedRelations = [
+  //   ...allowedAdminAppointmentsRelations,
+  //   // ...defaultAdminOrdersRelations.map((field) => `order.${field}`),
+  // ];
 
   route.get(
     "/:id",
-    transformQuery(FindParams,  {
-      defaultRelations: relations,
-      defaultFields: defaultAdminOrdersFields,
-      allowedFields: allowedAdminOrdersFields,
-      allowedRelations: allowedAdminOrdersRelations,
+    transformQuery(FindParams, {
+      defaultRelations: defaultAdminAppointmentRelations,
+      defaultFields: defaultAdminAppointmentsFields,
+      allowedFields: defaultAdminAppointmentsFields,
+      allowedRelations: allowedAdminAppointmentsFields,
       isList: false,
     }),
     middlewares.wrap(require("./get-appointment").default)
@@ -41,105 +62,40 @@ export default (app) => {
   return app;
 };
 
-export const defaultAdminAppointmentRelations = [];
+export const defaultAdminAppointmentRelations = ["order"];
 
-export const defaultAdminAppointmentFields: (keyof Appointment)[] = [
-    "id",
-    "status",
-    "display_id",
-    "notified_via_email_at",
-    "notified_via_sms_at",
-    "from",
-    "to",
-    "order_id",
-    "code",
-    "is_confirmed",
-    "metadata",
-    "created_at",
-    "updated_at",
-    "deleted_at",
+export const defaultAdminAppointmentsFields: (keyof Appointment)[] = [
+  "id",
+  "status",
+  "display_id",
+  "notified_via_email_at",
+  "notified_via_sms_at",
+  "from",
+  "to",
+  "order_id",
+  "code",
+  "is_confirmed",
+  "metadata",
+  "created_at",
+  "updated_at",
+  "deleted_at",
 ] as (keyof Appointment)[];
 
-export const defaultAdminOrdersFields = [
-    "id",
-    "status",
-    "fulfillment_status",
-    "payment_status",
-    "display_id",
-    "cart_id",
-    "draft_order_id",
-    "customer_id",
-    "email",
-    "region_id",
-    "currency_code",
-    "tax_rate",
-    "canceled_at",
-    "created_at",
-    "updated_at",
-    "metadata",
-    "items.refundable",
-    "swaps.additional_items.refundable",
-    "claims.additional_items.refundable",
-    "shipping_total",
-    "discount_total",
-    "tax_total",
-    "refunded_total",
-    "gift_card_total",
-    "subtotal",
-    "total",
-    "paid_total",
-    "refundable_amount",
-    "no_notification",
-] as (keyof Order)[];
-
-export const allowedAdminOrdersFields = [
-    "id",
-    "status",
-    "fulfillment_status",
-    "payment_status",
-    "display_id",
-    "cart_id",
-    "draft_order_id",
-    "customer_id",
-    "email",
-    "region_id",
-    "currency_code",
-    "tax_rate",
-    "canceled_at",
-    "created_at",
-    "updated_at",
-    "metadata",
-    "shipping_total",
-    "discount_total",
-    "tax_total",
-    "refunded_total",
-    "subtotal",
-    "gift_card_total",
-    "total",
-    "paid_total",
-    "refundable_amount",
-    "no_notification",
+export const allowedAdminAppointmentsFields = [
+  "id",
+  "status",
+  "display_id",
+  "notified_via_email_at",
+  "notified_via_sms_at",
+  "from",
+  "to",
+  "order_id",
+  "code",
+  "is_confirmed",
+  "metadata",
 ];
 
-export const allowedAdminOrdersRelations = [
-    "order",
-    "order.customer",
-    "order.region",
-    "order.edits",
-    "order.sales_channel",
-    "order.billing_address",
-    "order.shipping_address",
-    "order.discounts",
-    "order.discounts.rule",
-    "order.shipping_methods",
-    "order.payments",
-    "order.fulfillments",
-    "order.returns",
-    "order.claims",
-    "order.swaps",
-    "order.swaps.return_order",
-    "order.swaps.additional_items",
-];
+export const allowedAdminAppointmentsRelations = ["appointment"];
 
 export * from "./list-appointment";
 export * from "./create-appointment";

@@ -21,6 +21,7 @@ import CalendarTimeperiodService from "./calendar-timeperiod";
 import LocationService from "./location";
 import { divideTimes } from "../utils/date-utils";
 import { includes } from "lodash";
+import ServiceSettingService from "./service-setting";
 
 type InjectedDependencies = {
   manager: EntityManager;
@@ -30,6 +31,7 @@ type InjectedDependencies = {
   locationService: LocationService;
   orderService: OrderService;
   eventBusService: EventBusService;
+  serviceSettingService: ServiceSettingService;
 };
 
 class AppointmentService extends TransactionBaseService {
@@ -42,12 +44,14 @@ class AppointmentService extends TransactionBaseService {
   protected readonly calendarTimeperiod_: CalendarTimeperiodService;
   protected readonly location_: LocationService;
   protected readonly order_: OrderService;
+  protected readonly setting_: ServiceSettingService;
 
   static readonly IndexName = `appointments`;
   static readonly Events = {
     UPDATED: "appointment.updated",
     CREATED: "appointment.created",
     DELETED: "appointment.deleted",
+    CANCELED: "appointment.canceled"
   };
 
   constructor({
@@ -58,6 +62,7 @@ class AppointmentService extends TransactionBaseService {
     calendarTimeperiodService,
     locationService,
     orderService,
+    serviceSettingService
   }: InjectedDependencies) {
     super(arguments[0]);
 
@@ -68,6 +73,7 @@ class AppointmentService extends TransactionBaseService {
     this.calendarTimeperiod_ = calendarTimeperiodService;
     this.location_ = locationService;
     this.order_ = orderService;
+    this.setting_ = serviceSettingService;
   }
 
   async list(
@@ -414,6 +420,61 @@ class AppointmentService extends TransactionBaseService {
 
     return await this.retrieve(appointment.id, {
       relations: ["order", "order.items"],
+    });
+  }
+
+  async cancelAppointment(appointmentId: string): Promise<Appointment> {
+    return await this.atomicPhase_(async (manager) => {
+      const isCancellationAllow = ((await this.setting_.get("cancellation_allow")).value === "true")
+      const cancellationMaxDayBeforeAppointment = parseInt((await this.setting_.get("cancellation_max_day_before_appointment")).value)
+
+      // check if cancellation is allowed
+      if (!isCancellationAllow)
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "ERROR_APPOINTMENT_CANNOT_BE_CANCELED"
+        );
+
+      const appointment = await this.retrieve(appointmentId, {});
+
+      if (appointment.status == AppointmentStatus.CANCELED)
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "ERROR_APPOINTMENT_ALREADY_CANCELED" //rethink about the error name :)
+        );
+      
+      // only scheduled appointment can be canceled
+      if (appointment.status != AppointmentStatus.SCHEDULED)
+        throw new MedusaError(
+          MedusaError.Types.NOT_FOUND,
+          "ERROR_APPOINTMENT_NOT_FOUND" //rethink about the error name :)
+        );
+
+      const appointmentStartTime = new Date(appointment.from).getTime()
+      const cancellationBeforeTime = new Date().getTime() + (cancellationMaxDayBeforeAppointment * 1000 * 60 * 60 * 24) // today + max day before appointment
+      
+      // check it's late to be cancelled or not
+      if (appointmentStartTime < cancellationBeforeTime)
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "ERROR_APPOINTMENT_TOO_LATE_TO_CANCEL"
+        );
+      
+      await this.update(appointmentId, { status: AppointmentStatus.CANCELED });
+
+      // delete calendar timeperiod so the time will be available
+      const calendarTimeperiodId = appointment.metadata?.calendar_timeperiod_id as string
+      if (calendarTimeperiodId) await this.calendarTimeperiod_.delete(calendarTimeperiodId)
+
+      const result = await this.retrieve(appointmentId, {});
+
+      await this.eventBus_
+        .withTransaction(manager)
+        .emit(AppointmentService.Events.CANCELED, {
+          id: result.id,
+        });
+
+      return result;
     });
   }
 }

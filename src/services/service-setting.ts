@@ -99,7 +99,7 @@ class ServiceSettingService extends TransactionBaseService {
         })
     }
 
-    async set(option: string, value: string): Promise<ServiceSetting> {
+    async set(option: string, value: string, is_public?: boolean): Promise<ServiceSetting> {
         return await this.atomicPhase_(async (manager) => {
             const serviceSettingRepo = manager.getCustomRepository(this.serviceSettingRepository_)
 
@@ -112,6 +112,7 @@ class ServiceSettingService extends TransactionBaseService {
                 result = await serviceSettingRepo.findOne({ where: { option: option } })
             } else {
                 serviceSetting["value"] = value
+                if (is_public != undefined) serviceSetting["is_public"] = is_public
                 result = await serviceSettingRepo.save(serviceSetting)
             }
 

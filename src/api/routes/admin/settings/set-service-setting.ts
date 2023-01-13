@@ -1,5 +1,5 @@
 import { validator } from "../../../../utils/validator"
-import { IsString, IsOptional } from "class-validator"
+import { IsString, IsOptional, IsBoolean } from "class-validator"
 import ServiceSettingService from "../../../../services/service-setting"
 import { EntityManager } from "typeorm"
 
@@ -13,7 +13,7 @@ export default async (req, res) => {
     await manager.transaction(async (transactionManager) => {
         await serviceSettingService
         .withTransaction(transactionManager)
-        .set(option, validated.value)
+        .set(option, validated.value, validated.is_public)
     })
 
     const serviceSetting = await serviceSettingService.get(option)
@@ -24,5 +24,9 @@ export default async (req, res) => {
 export class AdminPostServiceSettingReq {
     @IsString()
     @IsOptional()
-    value: string
+    value?: string
+
+    @IsBoolean()
+    @IsOptional()
+    is_public?: boolean
 }

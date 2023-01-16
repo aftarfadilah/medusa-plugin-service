@@ -2,7 +2,6 @@ import AppointmentService from "../../../../services/appointment";
 
 export default async (req, res) => {
   const { birthday, division, currentTime } = req.query;
-  console.log(req.query);
 
   const appointmentService: AppointmentService =
     req.scope.resolve("appointmentService");

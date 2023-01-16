@@ -8,7 +8,7 @@ const automationSlotTimesJob = async (container, options) => {
     // do cronjob everyhour
     eventBus_.createCronJob("automation-slot-times", {}, "0 * * * *", async () => {
         const setting = {}
-        const getSetting: ServiceSetting[] = await setting_.all({}, {})
+        const getSetting: ServiceSetting[] = await setting_.all()
 
         for (const settingData of Object.values(getSetting)) {
             setting[settingData.option] = settingData.value

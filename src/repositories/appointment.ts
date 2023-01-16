@@ -12,6 +12,7 @@ export class AppointmentRepository extends Repository<Appointment> {
     > = {}
   ): Promise<Appointment[]> {
     const entities = await this.find(optionsWithoutRelations);
+
     const entitiesIds = entities.map(({ id }) => id);
 
     const groupedRelations = {};
@@ -26,6 +27,7 @@ export class AppointmentRepository extends Repository<Appointment> {
 
     const entitiesIdsWithRelations = await Promise.all(
       Object.entries(groupedRelations).map(async ([_, rels]) => {
+
         return this.findByIds(entitiesIds, {
           select: ["id"],
           relations: rels as string[],

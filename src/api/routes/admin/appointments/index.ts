@@ -2,13 +2,14 @@ import { Router } from "express";
 import { Appointment } from "../../../../models/appointment";
 import middlewares from "../../../middleware";
 import "reflect-metadata";
-import { transformQuery } from "@medusajs/medusa/dist/api/middlewares";
 import { FindParams } from "@medusajs/medusa/dist/types/common";
 import {
   defaultAdminOrdersFields,
   defaultAdminOrdersRelations,
   Order,
 } from "@medusajs/medusa";
+import { AdminGetAppointmentsParams } from "./list-appointment";
+import {transformQuery} from "../../../middleware/transform-query";
 
 const route = Router();
 
@@ -17,28 +18,19 @@ export default (app) => {
 
   route.post("/", middlewares.wrap(require("./create-appointment").default));
 
-  route.get("/", middlewares.wrap(require("./list-appointment").default));
-
-  // Get the order of the appointment with the same params as in get-order admin appointment
-  // const defaultRelations = [
-  //   ...defaultAdminAppointmentRelations,
-  //   // ...defaultAdminOrdersRelations.map((field) => `order.${field}`),
-  // ];
-  //
-  // const defaultFields = [
-  //   ...defaultAdminAppointmentsFields,
-  //   // ...defaultAdminOrdersFields.map((field) => `order.${field}`),
-  // ];
-  //
-  // const allowedFields = [
-  //   ...allowedAdminAppointmentsFields,
-  //   // ...defaultAdminOrdersFields.map((field) => `order.${field}`),
-  // ];
-  //
-  // const allowedRelations = [
-  //   ...allowedAdminAppointmentsRelations,
-  //   // ...defaultAdminOrdersRelations.map((field) => `order.${field}`),
-  // ];
+  try {
+    route.get(
+      "/",
+      transformQuery(AdminGetAppointmentsParams, {
+        defaultRelations: defaultAdminAppointmentRelations,
+        defaultFields: defaultAdminAppointmentsFields,
+        isList: true,
+      }),
+      middlewares.wrap(require("./list-appointment").default)
+    );
+  } catch (e) {
+    console.error(e);
+  }
 
   route.get(
     "/:id",
@@ -62,7 +54,7 @@ export default (app) => {
   return app;
 };
 
-export const defaultAdminAppointmentRelations = ["order"];
+export const defaultAdminAppointmentRelations = ["order", "order.customer"];
 
 export const defaultAdminAppointmentsFields: (keyof Appointment)[] = [
   "id",

@@ -9,7 +9,7 @@ import {
 import { formatException } from "@medusajs/medusa/dist/utils/exception-formatter";
 import { buildQuery } from "@medusajs/medusa/dist/utils/build-query";
 import { MedusaError } from "medusa-core-utils";
-import { EntityManager } from "typeorm";
+import { Brackets, EntityManager } from "typeorm";
 import { AppointmentRepository } from "../repositories/appointment";
 import { OrderRepository } from "@medusajs/medusa/dist/repositories/order";
 import { Appointment, AppointmentStatus } from "../models/appointment";
@@ -18,7 +18,11 @@ import {
   UpdateAppointmentInput,
 } from "../types/appointment";
 import { setMetadata } from "@medusajs/medusa/dist/utils";
-import { FindConfig, Selector } from "@medusajs/medusa/dist/types/common";
+import {
+  FindConfig,
+  QuerySelector,
+  Selector,
+} from "@medusajs/medusa/dist/types/common";
 import CalendarService from "./calendar";
 import CalendarTimeperiodService from "./calendar-timeperiod";
 import LocationService from "./location";
@@ -96,9 +100,77 @@ class AppointmentService extends TransactionBaseService {
     );
     const query = buildQuery(selector, config);
 
-    console.log("List appointment", query);
-
     return appointmentRepo.findAndCount(query);
+  }
+
+  async listAndCount(
+    selector: QuerySelector<Appointment>,
+    config: FindConfig<Appointment> = {
+      skip: 0,
+      take: 50,
+      order: { from: "ASC" },
+    }
+  ): Promise<[Appointment[], number]> {
+    console.log("Config", config);
+
+    const appointmentRepo = this.manager_.getCustomRepository(
+      this.appointmentRepository_
+    );
+
+    let q;
+    if (selector.q) {
+      q = selector.q;
+      delete selector.q;
+    }
+
+    const query = buildQuery(selector, config);
+
+    if (q) {
+      const where = query.where;
+
+      delete where.display_id;
+
+      query.join = {
+        alias: "appointment",
+        innerJoin: {
+          order: "appointment.order",
+        },
+      };
+
+      query.where = (qb): void => {
+        qb.where(where);
+
+        //TODO: Add where clause for appointment.order.customer.first_name
+
+        qb.andWhere(
+          new Brackets((qb) => {
+            qb.where(`order.email ILIKE :q`, { q: `%${q}%` })
+              // .orWhere(`order.customer.first_name ILIKE :qfn`, {
+              //   qfn: `%${q}%`,
+              // })
+              .orWhere(`appointment.display_id::varchar(255) ILIKE :dId`, {
+                dId: `${q}`,
+              });
+            // .orWhere(`order.customer.last_name ILIKE :q`, { q: `%${q}%` })
+            // .orWhere(`order.customer.phone ILIKE :q`, { q: `%${q}%` });
+          })
+        );
+      };
+    }
+
+    query.select = config.select;
+    const rels = config.relations;
+
+    delete query.relations;
+
+    const appointments = await appointmentRepo.findWithRelations(rels, query);
+    const count = await appointmentRepo.count(query);
+
+    return [appointments, count];
+
+    // const query = buildQuery(selector, config);
+    //
+    // return appointmentRepo.findAndCount(query);
   }
 
   async retrieve(appointmentId: string, config: FindConfig<Appointment>) {
@@ -217,13 +289,9 @@ class AppointmentService extends TransactionBaseService {
   async getCurrent(divisionId: string, currentTime: string, birthDate: Date) {
     const hourInMs = 1000 * 60 * 60;
     const now = new Date(parseInt(currentTime));
-    console.log("Now", now);
-
     // Check in the previous and next 2 hours
     const dateTimeFrom = new Date(now.getTime() - 2 * hourInMs);
     const dateTimeTo = new Date(now.getTime() + 2 * hourInMs);
-
-    console.log("Check in range of ", dateTimeFrom, dateTimeTo);
 
     const selector: Selector<Appointment> = {
       from: {
@@ -255,8 +323,6 @@ class AppointmentService extends TransactionBaseService {
       const { metadata } = appointment;
 
       const appointmentTimePeriodId = metadata["calendar_time_period_id"];
-
-      // console.log("appointmentTimePeriod", appointmentTimePeriodId);
 
       if (appointmentTimePeriodId) {
         const appointmentTimePeriod = await this.calendarTimeperiod_.retrieve(

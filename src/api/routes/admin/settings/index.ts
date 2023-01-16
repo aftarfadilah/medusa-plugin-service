@@ -25,6 +25,7 @@ export const defaultAdminInvoiceSettingsFields: (keyof ServiceSetting)[] = [
     "id",
     "option",
     "value",
+    "is_public",
     "created_at",
     "updated_at",
     "deleted_at",

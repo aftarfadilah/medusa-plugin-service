@@ -6,6 +6,7 @@ import customerRoutes from "./customers"
 import appointmentRoutes from "./appointments"
 import locationRoutes from "./locations"
 import divisionRoutes from "./divisions"
+import settingRoutes from "./settings"
 import { getConfigFile } from "medusa-core-utils";
 
 const route = Router()
@@ -29,6 +30,7 @@ export default (app, rootDirectory, config) => {
   appointmentRoutes(route)
   locationRoutes(route)
   divisionRoutes(route)
+  settingRoutes(route)
 
   return app
 }

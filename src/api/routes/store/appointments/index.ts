@@ -20,6 +20,7 @@ export default (app) => {
   // Authenticated endpoints
   route.use(requireCustomerAuthentication());
   route.get("/:id", middlewares.wrap(require("./get-appointment").default));
+  route.post("/:id/cancel", middlewares.wrap(require("./cancel-appointment").default));
 
 
   return app;

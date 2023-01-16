@@ -17,6 +17,9 @@ export class ServiceSetting extends SoftDeletableEntity {
     @Column({ type: "varchar" })
     value: string
 
+    @Column({ type: "boolean" })
+    is_public: boolean
+
     @BeforeInsert()
     private beforeInsert(): void {
         this.id = generateEntityId(this.id, "sset")

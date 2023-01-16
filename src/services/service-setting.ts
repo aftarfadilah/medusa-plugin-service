@@ -4,6 +4,7 @@ import { MedusaError } from "medusa-core-utils"
 import { EntityManager } from "typeorm"
 import { ServiceSettingRepository } from "../repositories/service-setting";
 import { ServiceSetting } from '../models/service-setting';
+import { isObject } from '../utils/type-utils';
 
 type InjectedDependencies = {
     manager: EntityManager
@@ -35,16 +36,30 @@ class ServiceSettingService extends TransactionBaseService {
         this.options = options
     }
 
-    async all(): Promise<ServiceSetting[]> {
+    async all(is_public?: boolean): Promise<ServiceSetting[]> {
         const serviceSettingRepo = this.manager_.getCustomRepository(this.serviceSettingRepository_)
-        return serviceSettingRepo.find()
+        let filterWhere: any = {}
+        if (is_public) {
+            filterWhere = {
+                is_public: is_public,
+            }
+        }
+        return serviceSettingRepo.find({ where: filterWhere })
     }
 
-    async get(option: string) {
+    async get(option: string, is_public?: boolean) {
         const manager = this.manager_
         const serviceSettingRepo = manager.getCustomRepository(this.serviceSettingRepository_)
+        let filterSelect: any = { option: option }
 
-        const serviceSetting = await serviceSettingRepo.findOne({ option: option }, {})
+        if (is_public) {
+            filterSelect = {
+                is_public: is_public,
+                ...filterSelect,
+            }
+        }
+
+        const serviceSetting = await serviceSettingRepo.findOne(filterSelect, {})
 
         if (!serviceSetting) {
             throw new MedusaError(
@@ -56,12 +71,20 @@ class ServiceSettingService extends TransactionBaseService {
         return serviceSetting
     }
 
-    async create(option: string, value: string): Promise<ServiceSetting> {
+    async create(option: string, value: string, is_public?: boolean): Promise<ServiceSetting> {
         return await this.atomicPhase_(async (manager) => {
             const serviceSettingRepo = manager.getCustomRepository(this.serviceSettingRepository_)
+            let createObject: any = { option: option, value: value }
+
+            if (is_public) {
+                createObject = {
+                    is_public: is_public,
+                    ...createObject,
+                }
+            }
 
             try {
-                let serviceSetting: any = serviceSettingRepo.create({ option: option, value: value })
+                let serviceSetting: any = serviceSettingRepo.create(createObject)
                 serviceSetting = await serviceSettingRepo.save(serviceSetting)
                 const result = await this.get(option)
 
@@ -99,7 +122,7 @@ class ServiceSettingService extends TransactionBaseService {
         })
     }
 
-    async set(option: string, value: string): Promise<ServiceSetting> {
+    async set(option: string, value?: string, is_public?: boolean): Promise<ServiceSetting> {
         return await this.atomicPhase_(async (manager) => {
             const serviceSettingRepo = manager.getCustomRepository(this.serviceSettingRepository_)
 
@@ -108,10 +131,17 @@ class ServiceSettingService extends TransactionBaseService {
 
             // if option is not found, then we create new one
             if (!serviceSetting) {
-                serviceSetting = await this.create(option, value)
+                serviceSetting = await this.create(option, value, is_public ? is_public : false)
                 result = await serviceSettingRepo.findOne({ where: { option: option } })
             } else {
-                serviceSetting["value"] = value
+                let rest = { value: value, is_public: is_public }
+                
+                for (const [key, value] of Object.entries(rest)) {
+                    if (typeof value !== `undefined`) {
+                        serviceSetting[key] = value
+                    }
+                }
+                
                 result = await serviceSettingRepo.save(serviceSetting)
             }
 
@@ -130,9 +160,14 @@ class ServiceSettingService extends TransactionBaseService {
         const settingList = this.options.settings
         const allSetting = await this.all()
 
-        for (const x in settingList) {
-            if (!allSetting.find((d) => d.option == x)) {
-                await this.set(x, settingList[x])
+        for (const settingKey of Object.keys(settingList)) {
+            if (allSetting.find((d) => d.option == settingKey)) continue
+            const settingValue = settingList[settingKey]
+            if (isObject(settingValue)) {
+                const { value, is_public } = settingValue
+                await this.set(settingKey, value, is_public)
+            } else {
+                await this.set(settingKey, settingValue, false)
             }
         }
     }

@@ -191,7 +191,7 @@ class AppointmentService extends TransactionBaseService {
     if (!appointment) {
       throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
-        `Appointment ${appointmentId} has not been found.`
+        `ERROR::NO_APPOINTMENTS_FOUND`
       );
     }
 
@@ -322,7 +322,7 @@ class AppointmentService extends TransactionBaseService {
     if (appointmentCount === 0)
       throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
-        "No appointment found",
+        "ERROR::NO_APPOINTMENTS_FOUND",
         "400"
       );
 
@@ -354,7 +354,7 @@ class AppointmentService extends TransactionBaseService {
         if (!customerBirthday) {
           throw new MedusaError(
             MedusaError.Types.NOT_FOUND,
-            "No birthday found for customer",
+            "ERROR::NO_BIRTHDAY_DATA_FOR_CUSTOMER",
             "400"
           );
         }
@@ -380,7 +380,7 @@ class AppointmentService extends TransactionBaseService {
 
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
-      "No appointment found",
+      "ERROR::NO_APPOINTMENTS_FOUND",
       "400"
     );
   }
@@ -457,7 +457,7 @@ class AppointmentService extends TransactionBaseService {
     if (isOrderHaveAppointment)
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Order Already Have Appointment !",
+        "ERROR::ORDER_ALREADY_HAS_APPOINTMENT",
         "400"
       );
 
@@ -509,7 +509,7 @@ class AppointmentService extends TransactionBaseService {
     if (!isSlotTimeAvailable)
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
-        "Slot Time Not Available!",
+        "ERROR::SLOT_TIME_NOT_AVAILABLE",
         "404"
       );
 
@@ -561,7 +561,7 @@ class AppointmentService extends TransactionBaseService {
       if (!isCancellationAllow)
         throw new MedusaError(
           MedusaError.Types.NOT_ALLOWED,
-          "ERROR_APPOINTMENT_CANNOT_BE_CANCELED"
+          "ERROR::APPOINTMENT_CANNOT_BE_CANCELED"
         );
 
       const appointment = await this.retrieve(appointmentId, {});
@@ -569,14 +569,14 @@ class AppointmentService extends TransactionBaseService {
       if (appointment.status == AppointmentStatus.CANCELED)
         throw new MedusaError(
           MedusaError.Types.NOT_ALLOWED,
-          "ERROR_APPOINTMENT_ALREADY_CANCELED" //rethink about the error name :)
+          "ERROR::APPOINTMENT_ALREADY_CANCELED" //rethink about the error name :)
         );
 
       // only scheduled appointment can be canceled
       if (appointment.status != AppointmentStatus.SCHEDULED)
         throw new MedusaError(
           MedusaError.Types.NOT_FOUND,
-          "ERROR_APPOINTMENT_NOT_FOUND" //rethink about the error name :)
+          "ERROR::NO_APPOINTMENTS_FOUND" //rethink about the error name :)
         );
 
       const appointmentStartTime = new Date(appointment.from).getTime()
@@ -586,7 +586,7 @@ class AppointmentService extends TransactionBaseService {
       if (appointmentStartTime < cancellationBeforeTime)
         throw new MedusaError(
           MedusaError.Types.NOT_ALLOWED,
-          "ERROR_APPOINTMENT_TOO_LATE_TO_CANCEL"
+          "ERROR::APPOINTMENT_TOO_LATE_TO_CANCEL"
         );
 
       await this.update(appointmentId, { status: AppointmentStatus.CANCELED });

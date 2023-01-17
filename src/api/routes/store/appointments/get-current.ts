@@ -1,4 +1,5 @@
 import AppointmentService from "../../../../services/appointment";
+import { MedusaError } from "medusa-core-utils";
 
 export default async (req, res) => {
   const { birthday, division, currentTime } = req.query;
@@ -10,9 +11,10 @@ export default async (req, res) => {
   const birthdayDate = new Date(timestamp);
 
   if (!birthdayDate)
-    await res
-      .status(404)
-      .json({ message: "Please pass a correct timestamp as your birthday." });
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `ERROR::WRONG_BIRTHDAY_TIMESTAMP`
+    );
 
   const appointment = await appointmentService.getCurrent(
     division,
@@ -21,7 +23,10 @@ export default async (req, res) => {
   );
 
   if (!appointment)
-    await res.status(404).json({ message: "No running appointment found" });
+    throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `ERROR::NO_RUNNING_APPOINTMENT`
+    );
 
   await res.status(200).json({ appointment });
 };

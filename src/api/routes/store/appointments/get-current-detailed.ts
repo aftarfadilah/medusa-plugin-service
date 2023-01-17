@@ -1,5 +1,6 @@
 import AppointmentService from "../../../../services/appointment";
 import { CustomerService, OrderService } from "@medusajs/medusa";
+import {MedusaError} from "medusa-core-utils";
 
 export default async (req, res) => {
   const { appointment: appointmentId } = req.query;
@@ -17,7 +18,10 @@ export default async (req, res) => {
   });
 
   if (!appointment)
-    await res.status(404).json({ message: "ERROR_NO_APPOINTMENTS_FOUND" });
+    throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `ERROR::NO_APPOINTMENTS_FOUND`
+    );
 
   const isCurrentAppointment = appointmentService.checkIfCurrent(
     appointment,
@@ -25,7 +29,10 @@ export default async (req, res) => {
   );
 
   if (!isCurrentAppointment)
-    await res.status(404).json({ message: "ERRPR_NOT_CURRENT_APPOINTMENT" });
+    throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `ERROR::NOT_CURRENT_APPOINTMENT`
+    );
 
   // appointment.order = await orderService.retrieve(appointment.order_id, {
   //   relations: ["items", "customer"],

@@ -1,10 +1,11 @@
-import AppointmentService from "../../../../services/appointment"
+import AppointmentService from "../../../../services/appointment";
 
 export default async (req, res) => {
-    const { id } = req.params
+  const { id } = req.params;
 
-    const appointmentService: AppointmentService = req.scope.resolve("appointmentService")
-    const appointment = await appointmentService.retrieve(id, { relations: ["order"] })
+  const appointmentService: AppointmentService =
+    req.scope.resolve("appointmentService");
 
-    res.status(200).json({ appointment })
-}
+  const appointment = await appointmentService.retrieve(id, req.retrieveConfig);
+  res.status(200).json({ appointment });
+};

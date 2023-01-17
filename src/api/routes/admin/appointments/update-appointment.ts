@@ -3,7 +3,7 @@ import { IsString, IsObject, IsDate, IsOptional, IsEnum, IsBoolean, NotEquals, V
 import { Type } from "class-transformer"
 import AppointmentService from "../../../../services/appointment"
 import { EntityManager } from "typeorm"
-import { defaultAdminAppointmentFields, defaultAdminAppointmentRelations } from "."
+import { defaultAdminAppointmentsFields, defaultAdminAppointmentRelations } from "."
 import { AppointmentStatus } from "../../../../models/appointment"
 
 export default async (req, res) => {
@@ -21,7 +21,7 @@ export default async (req, res) => {
     })
 
     const appointment = await appointmentService.retrieve(id, {
-        select: defaultAdminAppointmentFields,
+        select: defaultAdminAppointmentsFields,
         relations: defaultAdminAppointmentRelations,
     })
 

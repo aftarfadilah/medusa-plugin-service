@@ -1,7 +1,8 @@
 import AppointmentService from "../../../../services/appointment";
+import { MedusaError } from "medusa-core-utils";
 
 export default async (req, res) => {
-  const { birthday, division } = req.query;
+  const { birthday, division, currentTime } = req.query;
 
   const appointmentService: AppointmentService =
     req.scope.resolve("appointmentService");
@@ -9,32 +10,23 @@ export default async (req, res) => {
   const timestamp = parseInt(birthday);
   const birthdayDate = new Date(timestamp);
 
-  if(!birthdayDate)
-    await res.status(404).json({ message: "Please pass a correct timestamp as your birthday." });
+  if (!birthdayDate)
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `ERROR::WRONG_BIRTHDAY_TIMESTAMP`
+    );
 
-  let isCustomer = true;
+  const appointment = await appointmentService.getCurrent(
+    division,
+    currentTime,
+    birthdayDate
+  );
 
-  const year = birthdayDate.getFullYear();
-  const month = birthdayDate.getMonth();
-  const date = birthdayDate.getDate();
+  if (!appointment)
+    throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `ERROR::NO_RUNNING_APPOINTMENT`
+    );
 
-  //TODO: Get birthday of customer and check
-
-  if (year !== 1991) isCustomer = false;
-
-  if (month !== 0) isCustomer = false;
-
-  if (date !== 11) isCustomer = false;
-
-  // check if customer can see the appointment or it's their own appointment
-  if (isCustomer) {
-    const appointment = await appointmentService.getCurrent(division);
-
-    if (!appointment)
-      await res.status(404).json({ message: "No running appointment found" });
-
-    await res.status(200).json({ appointment });
-  } else {
-    await res.status(404).json({ message: "This is not your appointment." });
-  }
+  await res.status(200).json({ appointment });
 };

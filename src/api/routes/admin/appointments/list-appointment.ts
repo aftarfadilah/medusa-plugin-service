@@ -1,71 +1,66 @@
-import { validator } from "../../../../utils/validator"
-import AppointmentService from "../../../../services/appointment"
-import { selector } from "../../../../types/appointment"
-import { IsDate, IsOptional, IsString, IsNumber } from "class-validator"
-import { Type } from "class-transformer"
+import { validator } from "../../../../utils/validator";
+import AppointmentService from "../../../../services/appointment";
+import {
+  AdminListAppointmentsSelector,
+  selector,
+} from "../../../../types/appointment";
+import { IsDate, IsOptional, IsString, IsNumber } from "class-validator";
+import { Type } from "class-transformer";
+import { Appointment, AppointmentStatus } from "../../../../models/appointment";
+import { pick } from "lodash";
 
 export default async (req, res) => {
-    const validated = await validator(AdminGetAppointmentsParams, req.query)
+  // const validated = await validator(AdminGetAppointmentsParams, req.query);
 
-    const selector: selector = {}
+  try {
+    const { skip, take, select, relations } = req.listConfig;
 
-    if (validated.name) {
-        selector.name = validated.name
+    const appointmentService: AppointmentService =
+      req.scope.resolve("appointmentService");
+
+    const [appointments, count] = await appointmentService.listAndCount(
+      req.filterableFields,
+      {
+        ...req.listConfig,
+        order: { from: "ASC" }, //TODO: Is there a better way to force the ordering?
+      }
+    );
+
+    let data: Partial<Appointment>[] = appointments;
+
+    const fields = [...select, ...relations];
+
+    if (fields.length) {
+      data = appointments.map((o) => pick(o, fields));
     }
-
-    if (validated.order_id) {
-        selector.order_id = validated.order_id
-    }
-
-    if (validated.code) {
-        selector.code = validated.code
-    }
-
-    const appointmentService: AppointmentService = req.scope.resolve("appointmentService")
-    const [appointments, count] = await appointmentService.list(selector, {
-        relations: ["order"],
-        skip: validated.offset,
-        take: validated.limit
-    })
 
     res.status(200).json({
-        appointments,
-        count: count,
-        limit: validated.limit,
-        offset: validated.offset
-    })
-}
+      appointments: data,
+      count: count,
+      limit: take,
+      offset: skip,
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-export class AdminGetAppointmentsParams {
-    @IsString()
-    @IsOptional()
-    name?: string
+export class AdminGetAppointmentsParams extends AdminListAppointmentsSelector {
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  offset = 0;
 
-    @IsString()
-    @IsOptional()
-    code?: string
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  limit = 50;
 
-    @IsString()
-    @IsOptional()
-    order_id?: string
+  @IsString()
+  @IsOptional()
+  expand?: string;
 
-    @IsDate()
-    @IsOptional()
-    @Type(() => Date)
-    from: Date
-  
-    @IsDate()
-    @IsOptional()
-    @Type(() => Date)
-    to: Date
-
-    @IsNumber()
-    @IsOptional()
-    @Type(() => Number)
-    limit = 50
-  
-    @IsNumber()
-    @IsOptional()
-    @Type(() => Number)
-    offset = 0
+  @IsString()
+  @IsOptional()
+  fields?: string;
 }

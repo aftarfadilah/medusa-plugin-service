@@ -239,8 +239,91 @@ class LocationService extends TransactionBaseService {
 
     return workingSlotTimes;
   }
+  
 
-  async getSlotTime_(calendarId: string, locationId: string, from, to) {
+  filterWithDuration(slotTimes, duration, divideBy) {
+    // Todo if duration 10 minutes, so every timeSlot should can be book for 10 minutes
+    const slotNeeded = duration/divideBy
+    let howManyLoop = 0;
+
+    // convert slotTimes
+    const convertedSlotTimes = {}
+    for (const slotTime of Object.values(slotTimes)) {
+      //@ts-ignore
+      convertedSlotTimes[slotTime.date] = slotTime.slot_times
+    }
+
+    const timeSlotNeeded = {}
+
+    for (const slotTime of Object.entries(convertedSlotTimes)) {
+      const [slotTimeKey, slotTimeData] = slotTime
+      timeSlotNeeded[slotTimeKey] = {}
+      for (const time of slotTimeData) {
+        timeSlotNeeded[slotTimeKey][time] = []
+        const [currentHour, currentMinute] = time.split(":").map((x) => parseInt(x))
+        for (let i = 0; i < slotNeeded; i++) {
+            const currDate = new Date(slotTimeKey)
+            currDate.setUTCHours(currentHour)
+            currDate.setUTCMinutes(currentMinute + (i * divideBy))
+    
+            const hoursUTC = currDate.getUTCHours();
+            const minutesUTC = currDate.getUTCMinutes();
+            const hours = hoursUTC < 10 ? `0${hoursUTC}` : hoursUTC;
+            const minutes = minutesUTC < 10 ?  `0${minutesUTC}` : minutesUTC;
+    
+            timeSlotNeeded[slotTimeKey][time].push(`${hours}:${minutes}`)
+            howManyLoop++;
+        }
+      }
+    }
+    
+    const availableSlotTimesWithDuration = {}
+    
+    // Todo Checking the slot
+    for (const [tsnKey, tsnValue] of Object.entries(timeSlotNeeded)) {
+        availableSlotTimesWithDuration[tsnKey] = []
+
+        // Getting next day key
+        let tsnKeyNext: any = new Date(tsnKey)
+        tsnKeyNext.setDate(tsnKeyNext.getDate() + 1)
+        const month = tsnKeyNext.getMonth() + 1
+        const date = tsnKeyNext.getDate()
+        tsnKeyNext = `${tsnKeyNext.getFullYear()}-${month < 10 ? `0`+month : month}-${date < 10 ? `0`+date : date}`;
+
+        for (const [tsnChildKey, tsnChildValue] of Object.entries(tsnValue)) {
+            let countSlot = 0
+            let isNextDay = false
+            for (const indx in tsnChildValue) {
+                const [currHour, currMinute] = tsnChildValue[indx].split(":")
+                const [prevHour, prevMinute] = indx != '0' ? tsnChildValue[indx - 1].split(":") : [currHour-1, 0]
+
+                // Todo check today or tomorrow?
+                if (prevHour > currHour) isNextDay = true
+
+                if (!isNextDay) {
+                    if (convertedSlotTimes[tsnKey].includes(tsnChildValue[indx])) countSlot++;
+                } else {
+                    if (convertedSlotTimes[tsnKeyNext] && convertedSlotTimes[tsnKeyNext].includes(tsnChildValue[indx])) countSlot++;
+                }
+            }
+            if (countSlot === slotNeeded) availableSlotTimesWithDuration[tsnKey].push(tsnChildKey)
+        }
+    }
+
+    const convertToOriginalStyle = []
+
+    for (const availableSlotTime of Object.entries(availableSlotTimesWithDuration)) {
+      const [astKey, astData] = availableSlotTime
+      convertToOriginalStyle.push({
+        date: astKey,
+        slot_times: astData
+      })
+    }
+
+    return convertToOriginalStyle
+  }
+
+  async getSlotTime_(calendarId: string, locationId: string, from, to, config: Record<string, any> = {}) {
     const dateFrom = new Date(
       from ? zeroTimes(subDay(from, 1)) : zeroTimes(new Date())
     ); // zeroTimes set all time to 00:00:00
@@ -255,6 +338,8 @@ class LocationService extends TransactionBaseService {
     const blockedSlotTimes = {}; // calendarTimeperiod
     const divideBy = 5; // 5 minutes
     const maxSlotTime = new Date((await this.setting_.get('automation_max_slot_date_time')).value)
+
+    const { duration } = config
 
     if (dateTo > maxSlotTime) dateTo = maxSlotTime
 
@@ -350,6 +435,9 @@ class LocationService extends TransactionBaseService {
       availableSlotTimes.push(availableObject);
     }
 
+    if (duration)
+      return this.filterWithDuration(availableSlotTimes, duration, divideBy)
+
     return availableSlotTimes;
   }
 
@@ -361,7 +449,7 @@ class LocationService extends TransactionBaseService {
   ) {
     let slotTimes = []
 
-    const { calendar_id } = config
+    const { calendar_id, duration } = config
 
     const location = await this.retrieve(locationId, {
       relations: ["company", "calendars", "default_working_hour"],
@@ -374,7 +462,7 @@ class LocationService extends TransactionBaseService {
       );
     
     for (const calendar of location.calendars) {
-      const getSlotTime_ = await this.getSlotTime_(calendar.id, locationId, from, to)
+      const getSlotTime_ = await this.getSlotTime_(calendar.id, locationId, from, to, { duration: duration })
       let slotTimeObject = {
         ...calendar,
         available_times: getSlotTime_

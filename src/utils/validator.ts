@@ -25,7 +25,6 @@ export async function validator<T, V>(
   plain: V,
   config: ValidatorOptions = {}
 ): Promise<T> {
-  console.log("Validator", typedClass, plain);
 
   const toValidate = plainToInstance(typedClass, plain);
   // @ts-ignore
@@ -36,8 +35,6 @@ export async function validator<T, V>(
   });
 
   const errorMessages = reduceErrorMessages(errors);
-
-  console.log("Error", errorMessages.join(", "));
 
   if (errors?.length) {
     throw new MedusaError(

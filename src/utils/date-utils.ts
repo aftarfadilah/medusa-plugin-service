@@ -53,6 +53,26 @@ export function divideTimes(f: Date, t: Date, byMinutes: number = 5) {
   return result;
 }
 
+export function utcToSpecificTZ(dateInput: Date, timeZone: string = "UTC") {
+  const options = {
+    year: 'numeric',
+    month:"2-digit",
+    day:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit",
+    hour12: false,
+    timeZone: timeZone
+  }
+
+  const timeZoneDate = new Intl.DateTimeFormat('it-IT', options).format(dateInput)
+  const splitDate = timeZoneDate.split(", ")
+  const [day, month, year] = splitDate[0].split("/")
+  const [hour, minute, millisecond] = splitDate[1].split(":")
+
+  return { date: {day, month, year}, time: {hour, minute, millisecond}}
+}
+
 export function countDays(from, to) {
   const date1 = new Date(from);
   const date2 = new Date(to);

@@ -315,7 +315,7 @@ class AppointmentService extends TransactionBaseService {
       makeAppointmentInput;
 
     // check calendar exists or not
-    await this.calendar_.retrieve(calendar_id, {});
+    const calendar = await this.calendar_.retrieve(calendar_id, {});
 
     // check if order already have appointment
     const isOrderHaveAppointment = await this.isOrderHaveAppointment(order_id);
@@ -408,7 +408,10 @@ class AppointmentService extends TransactionBaseService {
       to: new Date(slot_time_until),
       metadata: {
         calendar_timeperiod_id: timeperiod.id,
-        location: location,
+        location: {
+          ...location,
+          calendar: calendar
+        }
       },
     });
 

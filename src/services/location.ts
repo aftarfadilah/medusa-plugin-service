@@ -16,6 +16,7 @@ import {
   divideTimes,
   formatDate,
   subDay,
+  utcToSpecificTZ,
   zeroTimes,
 } from "../utils/date-utils";
 import { union, includes } from "lodash";
@@ -339,7 +340,7 @@ class LocationService extends TransactionBaseService {
     const divideBy = 5; // 5 minutes
     const maxSlotTime = new Date((await this.setting_.get('automation_max_slot_date_time')).value)
 
-    const { duration } = config
+    const { duration, timezone } = config
 
     if (dateTo > maxSlotTime) dateTo = maxSlotTime
 
@@ -435,10 +436,40 @@ class LocationService extends TransactionBaseService {
       availableSlotTimes.push(availableObject);
     }
 
-    if (duration)
-      return this.filterWithDuration(availableSlotTimes, duration, divideBy)
+    let availableSlotTimesFinal = []
 
-    return availableSlotTimes;
+    // convert utc slot time to specific timezone, should be optimized later!
+    if (timezone) {
+      const collectionSlotTime = {}
+      for (const availableSlotTime of availableSlotTimes) {
+        for (const slotTime of availableSlotTime.slot_times) {
+          const newDate = new Date(availableSlotTime.date)
+          const [newHour, newMinute] = slotTime.split(":").map((x) => parseInt(x))
+          newDate.setUTCHours(newHour, newMinute)
+          const newTZ = utcToSpecificTZ(newDate, timezone)
+          const newKey = `${newTZ.date.year}-${newTZ.date.month}-${newTZ.date.day}`;
+          const newSlotTime = `${newTZ.time.hour}:${newTZ.time.minute}`;
+          if (!collectionSlotTime[newKey]) collectionSlotTime[newKey] = []
+          collectionSlotTime[newKey].push(newSlotTime)
+        }
+      }
+      
+      for (const collSlotTime of Object.entries(collectionSlotTime)) {
+        const [key, value] = collSlotTime;
+        availableSlotTimesFinal.push({
+          date: key,
+          slot_times: value
+        })
+      }
+    } else {
+      // if timezone is undefined then we use utc timezone which is already there.
+      availableSlotTimesFinal = availableSlotTimes;
+    }
+
+    if (duration)
+      return this.filterWithDuration(availableSlotTimesFinal, duration, divideBy)
+
+    return availableSlotTimesFinal;
   }
 
   async getSlotTime(
@@ -449,7 +480,7 @@ class LocationService extends TransactionBaseService {
   ) {
     let slotTimes = []
 
-    const { calendar_id, duration } = config
+    const { calendar_id, duration, timezone } = config
 
     const location = await this.retrieve(locationId, {
       relations: ["company", "calendars", "default_working_hour"],
@@ -462,7 +493,7 @@ class LocationService extends TransactionBaseService {
       );
     
     for (const calendar of location.calendars) {
-      const getSlotTime_ = await this.getSlotTime_(calendar.id, locationId, from, to, { duration: duration })
+      const getSlotTime_ = await this.getSlotTime_(calendar.id, locationId, from, to, { duration: duration, timezone: timezone })
       let slotTimeObject = {
         ...calendar,
         available_times: getSlotTime_

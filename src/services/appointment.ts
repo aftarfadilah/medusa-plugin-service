@@ -1,26 +1,35 @@
 import {
   EventBusService,
   LineItem,
-  OrderService,
+  Order,
+  TotalsService,
   TransactionBaseService,
+  OrderService,
 } from "@medusajs/medusa";
 import { formatException } from "@medusajs/medusa/dist/utils/exception-formatter";
 import { buildQuery } from "@medusajs/medusa/dist/utils/build-query";
 import { MedusaError } from "medusa-core-utils";
-import { EntityManager } from "typeorm";
+import { Brackets, EntityManager } from "typeorm";
 import { AppointmentRepository } from "../repositories/appointment";
+import { OrderRepository } from "@medusajs/medusa/dist/repositories/order";
 import { Appointment, AppointmentStatus } from "../models/appointment";
 import {
   CreateAppointmentInput,
   UpdateAppointmentInput,
 } from "../types/appointment";
 import { setMetadata } from "@medusajs/medusa/dist/utils";
-import { FindConfig, Selector } from "@medusajs/medusa/dist/types/common";
+import {
+  FindConfig,
+  QuerySelector,
+  Selector,
+} from "@medusajs/medusa/dist/types/common";
 import CalendarService from "./calendar";
 import CalendarTimeperiodService from "./calendar-timeperiod";
 import LocationService from "./location";
 import { divideTimes } from "../utils/date-utils";
 import { includes } from "lodash";
+import DivisionService from "./division";
+import ServiceSettingService from "./service-setting";
 
 type InjectedDependencies = {
   manager: EntityManager;
@@ -30,6 +39,10 @@ type InjectedDependencies = {
   locationService: LocationService;
   orderService: OrderService;
   eventBusService: EventBusService;
+  serviceSettingService: ServiceSettingService;
+  orderRepository: typeof OrderRepository;
+  totalsService: TotalsService;
+  divisionService: DivisionService;
 };
 
 class AppointmentService extends TransactionBaseService {
@@ -37,37 +50,47 @@ class AppointmentService extends TransactionBaseService {
   protected transactionManager_: EntityManager | undefined;
 
   protected readonly appointmentRepository_: typeof AppointmentRepository;
+  protected readonly orderRepository_: typeof OrderRepository;
   protected readonly eventBus_: EventBusService;
+  protected readonly totalsService_: TotalsService;
   protected readonly calendar_: CalendarService;
   protected readonly calendarTimeperiod_: CalendarTimeperiodService;
   protected readonly location_: LocationService;
   protected readonly order_: OrderService;
+  protected readonly setting_: ServiceSettingService;
 
   static readonly IndexName = `appointments`;
   static readonly Events = {
     UPDATED: "appointment.updated",
     CREATED: "appointment.created",
     DELETED: "appointment.deleted",
+    CANCELED: "appointment.canceled"
   };
 
   constructor({
     manager,
     appointmentRepository,
     eventBusService,
+    totalsService,
+    orderRepository,
     calendarService,
     calendarTimeperiodService,
     locationService,
     orderService,
+    serviceSettingService
   }: InjectedDependencies) {
     super(arguments[0]);
 
     this.manager_ = manager;
     this.appointmentRepository_ = appointmentRepository;
     this.eventBus_ = eventBusService;
+    this.totalsService_ = totalsService;
+    this.orderRepository_ = orderRepository;
     this.calendar_ = calendarService;
     this.calendarTimeperiod_ = calendarTimeperiodService;
     this.location_ = locationService;
     this.order_ = orderService;
+    this.setting_ = serviceSettingService;
   }
 
   async list(
@@ -87,6 +110,76 @@ class AppointmentService extends TransactionBaseService {
     return appointmentRepo.findAndCount(query);
   }
 
+  async listAndCount(
+    selector: QuerySelector<Appointment>,
+    config: FindConfig<Appointment> = {
+      skip: 0,
+      take: 50,
+      order: { from: "ASC" },
+    }
+  ): Promise<[Appointment[], number]> {
+    console.log("Config", config);
+
+    const appointmentRepo = this.manager_.getCustomRepository(
+      this.appointmentRepository_
+    );
+
+    let q;
+    if (selector.q) {
+      q = selector.q;
+      delete selector.q;
+    }
+
+    const query = buildQuery(selector, config);
+
+    if (q) {
+      const where = query.where;
+
+      delete where.display_id;
+
+      query.join = {
+        alias: "appointment",
+        innerJoin: {
+          order: "appointment.order",
+        },
+      };
+
+      query.where = (qb): void => {
+        qb.where(where);
+
+        //TODO: Add where clause for appointment.order.customer.first_name
+
+        qb.andWhere(
+          new Brackets((qb) => {
+            qb.where(`order.email ILIKE :q`, { q: `%${q}%` })
+              // .orWhere(`order.customer.first_name ILIKE :qfn`, {
+              //   qfn: `%${q}%`,
+              // })
+              .orWhere(`appointment.display_id::varchar(255) ILIKE :dId`, {
+                dId: `${q}`,
+              });
+            // .orWhere(`order.customer.last_name ILIKE :q`, { q: `%${q}%` })
+            // .orWhere(`order.customer.phone ILIKE :q`, { q: `%${q}%` });
+          })
+        );
+      };
+    }
+
+    query.select = config.select;
+    const rels = config.relations;
+
+    delete query.relations;
+
+    const appointments = await appointmentRepo.findWithRelations(rels, query);
+    const count = await appointmentRepo.count(query);
+
+    return [appointments, count];
+
+    // const query = buildQuery(selector, config);
+    //
+    // return appointmentRepo.findAndCount(query);
+  }
+
   async retrieve(appointmentId: string, config: FindConfig<Appointment>) {
     const manager = this.manager_;
     const appointmentRepo = manager.getCustomRepository(
@@ -98,7 +191,7 @@ class AppointmentService extends TransactionBaseService {
     if (!appointment) {
       throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
-        `Appointment was ${appointmentId} not found`
+        `ERROR::NO_APPOINTMENTS_FOUND`
       );
     }
 
@@ -200,54 +293,96 @@ class AppointmentService extends TransactionBaseService {
     });
   }
 
-  async getCurrent(division: string) {
-    const manager = this.manager_;
-
-    const selector: Selector<Appointment> = {};
-
+  async getCurrent(divisionId: string, currentTime: string, birthDate: Date) {
     const hourInMs = 1000 * 60 * 60;
-    const now = new Date();
-
+    const now = new Date(parseInt(currentTime));
     // Check in the previous and next 2 hours
-    selector.from = new Date(now.getTime() - 2 * hourInMs);
-    selector.to = new Date(now.getTime() + 2 * hourInMs);
+    const dateTimeFrom = new Date(now.getTime() - 2 * hourInMs);
+    const dateTimeTo = new Date(now.getTime() + 2 * hourInMs);
 
-    const appointmentRepo = manager.getCustomRepository(
-      this.appointmentRepository_
-    );
+    const selector: Selector<Appointment> = {
+      from: {
+        gte: dateTimeFrom,
+        lte: dateTimeTo,
+      },
+      to: {
+        gte: dateTimeFrom,
+        lte: dateTimeTo,
+      },
+    };
 
-    const query = buildQuery(selector);
-    const response = await appointmentRepo.findAndCount(query);
+    const response = await this.list(selector, {
+      order: {
+        from: "ASC",
+      },
+    });
 
-    const [appointmentList, _] = response;
+    const [appointmentList, appointmentCount] = response;
+
+    if (appointmentCount === 0)
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        "ERROR::NO_APPOINTMENTS_FOUND",
+        "400"
+      );
 
     for (const appointment of appointmentList) {
-      const { from, to } = appointment;
+      const { metadata } = appointment;
 
-      const now = new Date().getTime();
+      const appointmentTimePeriodId = metadata["calendar_time_period_id"];
 
-      const isCurrentAppointment = now > from.getTime() && now < to.getTime();
+      if (appointmentTimePeriodId) {
+        const appointmentTimePeriod = await this.calendarTimeperiod_.retrieve(
+          appointmentTimePeriodId,
+          {
+            relations: ["calendar", "calendar.division"],
+          }
+        );
 
-      if (isCurrentAppointment) {
-        /**
-         * TODO: Check if this appointment is from the right divison
-         * In the meta_data of the appointment should be a calendar_timeperiod id
-         * Retrieve the calendar_timeperiod and check if the division is correct and assign this to the value
-         */
+        const { id: appointmentDivisionId } =
+          appointmentTimePeriod.calendar.division;
 
-        const isRightDivision = true;
+        const isRightDivision = divisionId === appointmentDivisionId;
 
-        if (isRightDivision) {
+        const appointment_ = await this.retrieve(appointment.id, {
+          relations: ["order", "order.customer"],
+        });
+
+        const customerBirthday = appointment_.order.customer.metadata
+          .birthday as string;
+
+        if (!customerBirthday) {
+          throw new MedusaError(
+            MedusaError.Types.NOT_FOUND,
+            "ERROR::NO_BIRTHDAY_DATA_FOR_CUSTOMER",
+            "400"
+          );
+        }
+
+        const [expectedYearString, expectedMonthString, expectedDayString] =
+          customerBirthday.split("-");
+
+        const year = birthDate.getFullYear();
+        const month = birthDate.getMonth();
+        const day = birthDate.getDate();
+
+        const sameYear = parseInt(expectedYearString) === year;
+        const sameMonth = parseInt(expectedMonthString) - 1 === month;
+        const sameDay = parseInt(expectedDayString) === day;
+
+        const isRightCustomer = sameYear && sameMonth && sameDay;
+
+        if (isRightDivision && isRightCustomer) {
           return appointment;
-
-          // const appointment_ =  await this.retrieve(appointment.id, {
-          //     relations: ["order"]
-          // });
-          //
-          // appointment_.order = await this.order_.retrieve(appointment_.order.id, {relations: ["items"]})
         }
       }
     }
+
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "ERROR::NO_APPOINTMENTS_FOUND",
+      "400"
+    );
   }
 
   checkIfCurrent(appointment: Appointment, hourRange: number) {
@@ -315,14 +450,14 @@ class AppointmentService extends TransactionBaseService {
       makeAppointmentInput;
 
     // check calendar exists or not
-    await this.calendar_.retrieve(calendar_id, {});
+    const calendar = await this.calendar_.retrieve(calendar_id, {});
 
     // check if order already have appointment
     const isOrderHaveAppointment = await this.isOrderHaveAppointment(order_id);
     if (isOrderHaveAppointment)
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Order Already Have Appointment !",
+        "ERROR::ORDER_ALREADY_HAS_APPOINTMENT",
         "400"
       );
 
@@ -374,7 +509,7 @@ class AppointmentService extends TransactionBaseService {
     if (!isSlotTimeAvailable)
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
-        "Slot Time Not Available!",
+        "ERROR::SLOT_TIME_NOT_AVAILABLE",
         "404"
       );
 
@@ -408,12 +543,70 @@ class AppointmentService extends TransactionBaseService {
       to: new Date(slot_time_until),
       metadata: {
         calendar_timeperiod_id: timeperiod.id,
-        location: location,
+        location: {
+          ...location,
+          calendar: calendar
+        }
       },
     });
 
     return await this.retrieve(appointment.id, {
       relations: ["order", "order.items"],
+    });
+  }
+
+  async cancelAppointment(appointmentId: string): Promise<Appointment> {
+    return await this.atomicPhase_(async (manager) => {
+      const isCancellationAllow = ((await this.setting_.get("cancellation_allow")).value === "true")
+      const cancellationMaxDayBeforeAppointment = parseInt((await this.setting_.get("cancellation_max_day_before_appointment")).value)
+
+      // check if cancellation is allowed
+      if (!isCancellationAllow)
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "ERROR::APPOINTMENT_CANNOT_BE_CANCELED"
+        );
+
+      const appointment = await this.retrieve(appointmentId, {});
+
+      if (appointment.status == AppointmentStatus.CANCELED)
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "ERROR::APPOINTMENT_ALREADY_CANCELED" //rethink about the error name :)
+        );
+
+      // only scheduled appointment can be canceled
+      if (appointment.status != AppointmentStatus.SCHEDULED)
+        throw new MedusaError(
+          MedusaError.Types.NOT_FOUND,
+          "ERROR::NO_APPOINTMENTS_FOUND" //rethink about the error name :)
+        );
+
+      const appointmentStartTime = new Date(appointment.from).getTime()
+      const cancellationBeforeTime = new Date().getTime() + (cancellationMaxDayBeforeAppointment * 1000 * 60 * 60 * 24) // today + max day before appointment
+
+      // check it's late to be cancelled or not
+      if (appointmentStartTime < cancellationBeforeTime)
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "ERROR::APPOINTMENT_TOO_LATE_TO_CANCEL"
+        );
+
+      await this.update(appointmentId, { status: AppointmentStatus.CANCELED });
+
+      // delete calendar timeperiod so the time will be available
+      const calendarTimeperiodId = appointment.metadata?.calendar_timeperiod_id as string
+      if (calendarTimeperiodId) await this.calendarTimeperiod_.delete(calendarTimeperiodId)
+
+      const result = await this.retrieve(appointmentId, {});
+
+      await this.eventBus_
+        .withTransaction(manager)
+        .emit(AppointmentService.Events.CANCELED, {
+          id: result.id,
+        });
+
+      return result;
     });
   }
 }

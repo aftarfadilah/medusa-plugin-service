@@ -1,20 +1,27 @@
 import AppointmentService from "../../../../services/appointment";
-import {CustomerService, OrderService} from "@medusajs/medusa";
+import { CustomerService, OrderService } from "@medusajs/medusa";
+import {MedusaError} from "medusa-core-utils";
 
 export default async (req, res) => {
   const { appointment: appointmentId } = req.query;
 
-  console.log("Current detailed request", appointmentId);
-
   const appointmentService: AppointmentService =
     req.scope.resolve("appointmentService");
-  const orderService: OrderService = req.scope.resolve("orderService");
-  const customerService: CustomerService = req.scope.resolve("customerService");
 
-  const appointment = await appointmentService.retrieve(appointmentId, {});
+  const appointment = await appointmentService.retrieve(appointmentId, {
+    relations: [
+      "order",
+      "order.items",
+      "order.customer",
+      "order.customer.billing_address",
+    ],
+  });
 
   if (!appointment)
-    await res.status(404).json({ message: "ERROR_NO_APPOINTMENTS_FOUND" });
+    throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `ERROR::NO_APPOINTMENTS_FOUND`
+    );
 
   const isCurrentAppointment = appointmentService.checkIfCurrent(
     appointment,
@@ -22,12 +29,14 @@ export default async (req, res) => {
   );
 
   if (!isCurrentAppointment)
-    await res.status(404).json({ message: "ERRPR_NOT_CURRENT_APPOINTMENT" });
+    throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `ERROR::NOT_CURRENT_APPOINTMENT`
+    );
 
-  appointment.order = await orderService.retrieve(appointment.order_id, {
-    relations: ["items","customer"],
-  });
-
+  // appointment.order = await orderService.retrieve(appointment.order_id, {
+  //   relations: ["items", "customer"],
+  // });
 
   await res.status(200).json({ appointment });
 };

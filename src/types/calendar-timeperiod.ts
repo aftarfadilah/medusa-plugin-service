@@ -9,7 +9,14 @@ export type CreateCalendarTimeperiodInput = {
     metadata?: Record<string, unknown>
 }
 
-export type UpdateCalendarTimeperiodInput = CreateCalendarTimeperiodInput;
+export type UpdateCalendarTimeperiodInput = {
+    title?: string
+    from?: Date | string
+    to?: Date | string
+    type?: string
+    calendar_id?: string
+    metadata?: Record<string, unknown>
+}
 
 export type selector = {
     from?: DateComparisonOperator

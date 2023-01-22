@@ -9,7 +9,7 @@ export default (app) => {
   app.use("/locations", route)
 
   // Authenticated endpoints
-  route.use(requireCustomerAuthentication())
+  // route.use(requireCustomerAuthentication())
   
   route.get("/", middlewares.wrap(require("./list-location").default))
 

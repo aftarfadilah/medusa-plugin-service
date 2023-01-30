@@ -384,6 +384,47 @@ class LocationService extends TransactionBaseService {
 
     return slotTimes
   }
+
+
+  async getSlotTimeV2(
+    locationId: string,
+    from?: Date,
+    to?: Date,
+    config?: Record<string, any>
+  ) {
+    let slotTimes = []
+
+    const { calendar_id } = config
+
+    const location = await this.retrieve(locationId, {
+      relations: ["company", "calendars", "default_working_hour"],
+    });
+
+    // filter calendars with selection one if calendar_id not null
+    if (calendar_id)
+      location.calendars = location.calendars.filter(
+        (item) => item.id == calendar_id
+      );
+    
+    for (const calendar of location.calendars) {
+      const getSlotTime_ = await this.getSlotTime_(calendar.id, locationId, from, to)
+      
+      const availability = {};
+
+      // convert array to object
+      getSlotTime_.forEach(time => {
+        availability[time.date] = time.slot_times;
+      });
+
+      let slotTimeObject = {
+        ...calendar,
+        available_times: availability
+      }
+      slotTimes.push(slotTimeObject)
+    }
+
+    return slotTimes
+  }
 }
 
 export default LocationService;

@@ -64,7 +64,7 @@ class AppointmentService extends TransactionBaseService {
     UPDATED: "appointment.updated",
     CREATED: "appointment.created",
     DELETED: "appointment.deleted",
-    CANCELED: "appointment.canceled"
+    CANCELED: "appointment.canceled",
   };
 
   constructor({
@@ -77,7 +77,7 @@ class AppointmentService extends TransactionBaseService {
     calendarTimeperiodService,
     locationService,
     orderService,
-    serviceSettingService
+    serviceSettingService,
   }: InjectedDependencies) {
     super(arguments[0]);
 
@@ -420,6 +420,8 @@ class AppointmentService extends TransactionBaseService {
       divideBy
     );
 
+    console.log("Is slot time available", from, to, availableSlotTime);
+
     for (const dateEntry of Object.entries(selectedTimeSlots)) {
       const [dateKey, dateTimeSlots] = dateEntry;
 
@@ -445,9 +447,21 @@ class AppointmentService extends TransactionBaseService {
     location_id: string;
     calendar_id: string;
     slot_time: Date;
+    timezone_offset: number;
   }) {
-    const { order_id, location_id, calendar_id, slot_time } =
-      makeAppointmentInput;
+    const {
+      order_id,
+      location_id,
+      calendar_id,
+      slot_time: slot_time_iso,
+      timezone_offset,
+    } = makeAppointmentInput;
+
+    const timezone_offset_in_ms = timezone_offset * 60 * 1000 * -1;
+
+    const slot_time = new Date(
+      new Date(slot_time_iso).getTime() + timezone_offset_in_ms
+    );
 
     // check calendar exists or not
     const calendar = await this.calendar_.retrieve(calendar_id, {});
@@ -478,9 +492,16 @@ class AppointmentService extends TransactionBaseService {
       const product_time: string = x.variant.product.metadata
         ?.duration_min as string;
 
-      if (+variant_time > 0) {
+      if (!variant_time && !product_time)
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "ERROR::APPOINTMENT_HAS_NO_DURATION",
+          "400"
+        );
+
+      if (!!variant_time) {
         duration_min = +variant_time;
-      } else {
+      } else if (!!product_time) {
         duration_min = +product_time;
       }
 
@@ -545,8 +566,8 @@ class AppointmentService extends TransactionBaseService {
         calendar_timeperiod_id: timeperiod.id,
         location: {
           ...location,
-          calendar: calendar
-        }
+          calendar: calendar,
+        },
       },
     });
 
@@ -557,8 +578,12 @@ class AppointmentService extends TransactionBaseService {
 
   async cancelAppointment(appointmentId: string): Promise<Appointment> {
     return await this.atomicPhase_(async (manager) => {
-      const isCancellationAllow = ((await this.setting_.get("cancellation_allow")).value === "true")
-      const cancellationMaxDayBeforeAppointment = parseInt((await this.setting_.get("cancellation_max_day_before_appointment")).value)
+      const isCancellationAllow =
+        (await this.setting_.get("cancellation_allow")).value === "true";
+      const cancellationMaxDayBeforeAppointment = parseInt(
+        (await this.setting_.get("cancellation_max_day_before_appointment"))
+          .value
+      );
 
       // check if cancellation is allowed
       if (!isCancellationAllow)
@@ -582,8 +607,10 @@ class AppointmentService extends TransactionBaseService {
           "ERROR::NO_APPOINTMENTS_FOUND" //rethink about the error name :)
         );
 
-      const appointmentStartTime = new Date(appointment.from).getTime()
-      const cancellationBeforeTime = new Date().getTime() + (cancellationMaxDayBeforeAppointment * 1000 * 60 * 60 * 24) // today + max day before appointment
+      const appointmentStartTime = new Date(appointment.from).getTime();
+      const cancellationBeforeTime =
+        new Date().getTime() +
+        cancellationMaxDayBeforeAppointment * 1000 * 60 * 60 * 24; // today + max day before appointment
 
       // check it's late to be cancelled or not
       if (appointmentStartTime < cancellationBeforeTime)
@@ -595,8 +622,10 @@ class AppointmentService extends TransactionBaseService {
       await this.update(appointmentId, { status: AppointmentStatus.CANCELED });
 
       // delete calendar timeperiod so the time will be available
-      const calendarTimeperiodId = appointment.metadata?.calendar_timeperiod_id as string
-      if (calendarTimeperiodId) await this.calendarTimeperiod_.delete(calendarTimeperiodId)
+      const calendarTimeperiodId = appointment.metadata
+        ?.calendar_timeperiod_id as string;
+      if (calendarTimeperiodId)
+        await this.calendarTimeperiod_.delete(calendarTimeperiodId);
 
       const result = await this.retrieve(appointmentId, {});
 

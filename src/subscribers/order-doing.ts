@@ -39,12 +39,10 @@ class OrderDoingSubscriber {
         // check if make appoinment during checkout
         if (createAppointment) {
           // @ts-ignore
-          const { location, slot_time, calendar } =
+          const { location, slot_time, calendar, timezone_offset } =
             order.cart.context.appointment_values;
 
-          console.log("[LOG::ORDER:CART:CONTEXT] ", order.cart.context);
-
-          if (!location || !slot_time || !calendar)
+          if (!location || !slot_time || !calendar || !timezone_offset)
             throw new MedusaError(
               MedusaError.Types.INVALID_DATA,
               "location_id, calendar_id or slot_time not filled, create appointment failed.",
@@ -55,7 +53,8 @@ class OrderDoingSubscriber {
             order_id: id,
             location_id: location.id,
             calendar_id: calendar.id,
-            slot_time: new Date(slot_time).toISOString(),
+            slot_time,
+            timezone_offset,
           };
 
           const validated = await validator(PostMakeAppointmentReq, dataInput);

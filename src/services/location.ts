@@ -12,6 +12,7 @@ import CalendarTimeperiodService from "./calendar-timeperiod";
 import CalendarService from "./calendar";
 import {
   addDay,
+  checkIfNextDay,
   countDays,
   divideTimes,
   formatDate,
@@ -21,6 +22,7 @@ import {
 import { includes, union } from "lodash";
 import DefaultWorkingHourService from "./default-working-hour";
 import ServiceSettingService from "./service-setting";
+import { SlotTimes } from "../types/appointment";
 
 type InjectedDependencies = {
   manager: EntityManager;
@@ -246,57 +248,80 @@ class LocationService extends TransactionBaseService {
     return workingSlotTimes;
   }
 
-  filterWithDurationV2(slotTimes, duration, divideBy) {
-    const requiredNumberOfConsecutiveBlocks = duration / divideBy;
+  filterWithDurationV2(
+    slotTimes: SlotTimes[],
+    duration: number,
+    divideBy: number
+  ) {
+    const requiredNumberOfConsecutiveBlocks = Math.ceil(duration / divideBy);
 
-    return slotTimes.map((slotTime) => {
-      const {date, slot_times: slotTimesToDate} = slotTime;
+    return slotTimes.map((slotTime, slotTimeIndex) => {
+      const { date, slot_times: slotTimesToDate } = slotTime;
 
       /**
        * Iterate through each date slotTimes value
-       * date: "01-01-2023
+       * date: 01-01-2023
        * slot_times: [10:00,10:05,10:10,...]
        */
 
       const slotTimesToDate_ = slotTimesToDate.filter((slotTime, index) => {
-        const maxBlockIndex =
-            parseInt(index) + requiredNumberOfConsecutiveBlocks;
+        // console.log("Main index", index);
 
+        const maxBlockIndex = index + requiredNumberOfConsecutiveBlocks;
         // Not enough time until the end of day
-        if (slotTimesToDate.length < maxBlockIndex) {
-          return false;
-        }
 
-        //TODO: Iterate through the next consecutiveBlocks and check if it is the next from the previous
-        for (let i = parseInt(index); i < maxBlockIndex; i++) {
-          const index_ = i;
-
+        for (let index_ = index; index_ < maxBlockIndex; index_++) {
           if (!slotTimesToDate[index_ + 1]) return false;
 
           const current = slotTimesToDate[index_];
-          const next = slotTimesToDate[index_ + 1];
+          const nextIsFromSameDay = !!slotTimesToDate[index_ + 1];
+
+          const nextDay = slotTimes[slotTimeIndex + 1];
+
+          // Check if next day is one day after the previous day
+
+          if (!nextDay) return false;
+
+          let nextTimeSlot = slotTimesToDate[index_ + 1];
+
+          if (!nextIsFromSameDay) {
+            // If there are no appointments in the next day
+            if (nextDay.slot_times.length === 0) return false;
+
+            const nextSlotTimeDate = nextDay.date;
+
+            const isNextDay = checkIfNextDay(date, nextSlotTimeDate);
+
+            if (!isNextDay) return false;
+
+            nextTimeSlot = nextDay.slot_times[0];
+          }
 
           const [currentHour, currentMinute] = current.split(":");
-          const [nextHour, nextMinute] = next.split(":");
+          const [nextHour, nextMinute] = nextTimeSlot.split(":");
 
           // If same hour
           const calculatedNextMinute = parseInt(currentMinute) + divideBy;
           const sameHour =
-              parseInt(currentHour) === parseInt(nextHour) &&
-              calculatedNextMinute === parseInt(nextMinute);
+            parseInt(currentHour) === parseInt(nextHour) &&
+            calculatedNextMinute === parseInt(nextMinute);
 
-          if (sameHour) return true;
+          if (!sameHour) return false;
 
           // If different hour
           const nextHourMinute = calculatedNextMinute % 60;
 
-          return parseInt(nextMinute) === nextHourMinute;
+          const isNextConsecutiveMinute =
+            parseInt(nextMinute) === nextHourMinute;
+          if (!isNextConsecutiveMinute) return false;
+
+          if (index + 1 === maxBlockIndex) return true;
         }
 
         return true;
       });
 
-      return {date, slot_times: slotTimesToDate_};
+      return { date, slot_times: slotTimesToDate_ };
     });
   }
 

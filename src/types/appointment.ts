@@ -39,6 +39,11 @@ export type selector = {
   to?: Date;
 };
 
+export type SlotTimes = {
+  date: string;
+  slot_times: string[];
+};
+
 export class AdminListAppointmentsSelector {
   @IsString()
   @IsOptional()

@@ -89,3 +89,27 @@ export function zeroTimes(date) {
   x.setUTCMilliseconds(0);
   return new Date(x);
 }
+
+/**
+ * Expected format:
+ * date: "dd-mm-YYYY"
+ */
+export const checkIfNextDay = (dateA: string, dateB: string): boolean => {
+  const [yearA, monthA, dayA] = dateA.split("-");
+  const [yearB, monthB, dayB] = dateB.split("-");
+
+  const currentDate = new Date();
+  currentDate.setFullYear(
+    parseInt(yearA),
+    parseInt(monthA) - 1,
+    parseInt(dayA)
+  );
+
+  const nextDate = new Date();
+  nextDate.setFullYear(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+
+  const expectedDay = (currentDate.getDay() + 1) % 7;
+  const actualDay = nextDate.getDay();
+
+  return expectedDay === actualDay;
+};

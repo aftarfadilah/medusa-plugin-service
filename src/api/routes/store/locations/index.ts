@@ -17,6 +17,8 @@ export default (app) => {
 
   route.get("/:id/get-slot-time", middlewares.wrap(require("./get-slot-time-location").default))
 
+  route.get("/v2/:id/get-slot-time", middlewares.wrap(require("./get-slot-time-location-v2").default))
+
   return app
 }
 

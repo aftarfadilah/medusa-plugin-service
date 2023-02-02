@@ -9,7 +9,6 @@ export default (rootDirectory, options) => {
 
     admin(app, rootDirectory, options);
     store(app, rootDirectory, options);
-    v2(app, rootDirectory, options);
 
     app.use(errorHandler())
 

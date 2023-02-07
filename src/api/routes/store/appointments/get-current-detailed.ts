@@ -20,7 +20,7 @@ export default async (req, res) => {
   if (!appointment)
     throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
-        `ERROR::NO_APPOINTMENTS_FOUND`
+        `ERROR_NO_APPOINTMENTS_FOUND`
     );
 
   const isCurrentAppointment = appointmentService.checkIfCurrent(
@@ -31,7 +31,7 @@ export default async (req, res) => {
   if (!isCurrentAppointment)
     throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
-        `ERROR::NOT_CURRENT_APPOINTMENT`
+        `ERROR_NOT_CURRENT_APPOINTMENT`
     );
 
   // appointment.order = await orderService.retrieve(appointment.order_id, {

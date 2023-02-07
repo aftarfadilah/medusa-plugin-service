@@ -13,7 +13,7 @@ export default async (req, res) => {
   if (!birthdayDate)
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
-      `ERROR::WRONG_BIRTHDAY_TIMESTAMP`
+      `ERROR_WRONG_BIRTHDAY_TIMESTAMP`
     );
 
   const appointment = await appointmentService.getCurrent(
@@ -25,7 +25,7 @@ export default async (req, res) => {
   if (!appointment)
     throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
-        `ERROR::NO_RUNNING_APPOINTMENT`
+        `ERROR_NO_RUNNING_APPOINTMENT`
     );
 
   await res.status(200).json({ appointment });

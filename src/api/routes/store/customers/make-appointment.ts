@@ -19,7 +19,7 @@ export default async (req, res) => {
   if (order.customer_id != cus_id)
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "ERROR::WRONG_CUSTOMER_ORDER",
+      "ERROR_WRONG_CUSTOMER_ORDER",
       "400"
     );
 
